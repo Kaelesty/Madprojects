@@ -1,0 +1,37 @@
+# Gradle and build outputs
+.gradle/
+**/build/
+
+# IDE/Editor
+.idea/
+*.iml
+.vscode/
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+*.env
+
+# Sensitive config files
+gradle.properties
+backend/src/main/resources/config.json
+backend/src/main/resources/application.conf
+
+# Keystores / certificates (sensitive)
+backend/src/main/resources/*.p12
+backend/src/main/resources/*.jks
+backend/src/main/resources/*.pfx
+backend/src/main/resources/*.keystore
+backend/src/main/resources/*.pem
+backend/src/main/resources/*.crt
+backend/src/main/resources/*.cer
+backend/src/main/resources/*.der
+
+# Node / JS (just in case)
+node_modules/
+**/.parcel-cache/
+
