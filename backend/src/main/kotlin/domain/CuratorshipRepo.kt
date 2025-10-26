@@ -14,5 +14,5 @@ interface CuratorshipRepo {
 
     suspend fun getUnmarkedProjects(curatorId: String): List<ProjectInGroupView>
 
-
+    suspend fun checkUserIsProjectCurator(curatorId: String, projectId: String): Boolean
 }

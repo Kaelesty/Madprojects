@@ -20,6 +20,7 @@ Thumbs.db
 gradle.properties
 backend/src/main/resources/config.json
 backend/src/main/resources/application.conf
+src/*
 
 # Keystores / certificates (sensitive)
 backend/src/main/resources/*.p12

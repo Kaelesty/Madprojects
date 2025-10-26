@@ -6,6 +6,7 @@ import data.database.repos.iRepoImpl
 import data.database.repos.lRepoImpl
 import data.repos.ActivityRepoImpl
 import data.repos.AuthRepoImpl
+import data.repos.BanhammerRepoImpl
 import data.repos.ChatsRepoImpl
 import data.repos.CuratorshipRepoImpl
 import data.repos.GithubTokensRepoImpl
@@ -20,6 +21,8 @@ import data.repos.RepositoriesRepoImpl
 import data.repos.SprintsRepoImpl
 import data.repos.UnreadMessagesRepoImpl
 import data.repos.branches.BranchesRepoImpl
+import data.schemas.BanhammerService
+import domain.BanhammerRepo
 import domain.BranchesRepo
 import domain.CuratorshipRepo
 import domain.GithubTokensRepo
@@ -30,6 +33,7 @@ import domain.RepositoriesRepo
 import domain.UnreadMessagesRepository
 import domain.activity.ActivityRepo
 import domain.auth.AuthRepo
+import domain.curatorship.CheckCuratorshipUseCase
 import domain.database.aRepo
 import domain.database.iRepo
 import domain.database.lRepo
@@ -107,6 +111,22 @@ val domainModule = module {
             invitesService = get(),
             projectMembershipService = get(),
             projectService = get(),
+            banhammerService = get(),
+        )
+    }
+
+    single<BanhammerRepo> {
+        BanhammerRepoImpl(
+            banhammerService = get(),
+            profileRepo = get(),
+            projectMembershipService = get(),
+        )
+    }
+
+    single<CheckCuratorshipUseCase> {
+        CheckCuratorshipUseCase(
+            profileRepo = get(),
+            curatorshipRepo = get(),
         )
     }
 

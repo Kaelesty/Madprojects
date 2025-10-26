@@ -1,8 +1,10 @@
 package data.repos
 
+import data.schemas.BanhammerService
 import data.schemas.InvitesService
 import data.schemas.ProjectMembershipService
 import data.schemas.ProjectService
+import domain.BanhammerRepo
 import domain.InvitesRepo
 import java.math.BigInteger
 import java.security.MessageDigest
@@ -12,6 +14,7 @@ class InvitesRepoImpl(
     private val invitesService: InvitesService,
     private val projectMembershipService: ProjectMembershipService,
     private val projectService: ProjectService,
+    private val banhammerService: BanhammerService,
 ) : InvitesRepo {
 
     override suspend fun getProjectInvite(projectId: String): String {
@@ -36,6 +39,9 @@ class InvitesRepoImpl(
     override suspend fun useInvite(invite: String, userId: String): String? {
         val projectId = invitesService.getProjectByInvite(invite)
         projectId?.let {
+            if (banhammerService.checkUserIsBanned(it.toString(), userId)) {
+                return null
+            }
             val project = projectService.getById(projectId)
             val projectMembersCount = projectMembershipService.getProjectUserIds(projectId.toString()).size
             if (project.maxMembersCount == projectMembersCount) {

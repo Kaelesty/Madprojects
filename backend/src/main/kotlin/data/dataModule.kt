@@ -7,6 +7,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import data.database.DbConnector
 import data.database.databaseModule
 import data.schemas.ActivityService
+import data.schemas.BanhammerService
 import data.schemas.ChatService
 import data.schemas.ColumnsService
 import data.schemas.CommonUsersDataService
@@ -33,6 +34,12 @@ import org.koin.dsl.module
 val dataModule = module {
 
     includes(databaseModule)
+
+    single {
+        BanhammerService(
+            database = get()
+        )
+    }
 
     single<SprintsService> {
         SprintsService(

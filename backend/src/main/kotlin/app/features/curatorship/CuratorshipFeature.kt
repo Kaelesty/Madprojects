@@ -1,6 +1,7 @@
 package app.features.curatorship
 
 import domain.CuratorshipRepo
+import domain.curatorship.CheckCuratorshipUseCase
 import domain.profile.ProfileRepo
 import domain.project.ProjectRepo
 import io.ktor.http.ContentType
@@ -30,7 +31,7 @@ interface CuratorshipFeature {
 class CuratorshipFeatureImpl(
     private val profileRepo: ProfileRepo,
     private val curatorshipRepo: CuratorshipRepo,
-    private val projectRepo: ProjectRepo
+    private val projectRepo: ProjectRepo,
 ): CuratorshipFeature {
 
     override suspend fun getUnmarkedProjects(rc: RoutingContext) {
@@ -108,6 +109,7 @@ class CuratorshipFeatureImpl(
                 call.respond(HttpStatusCode.Locked)
                 return
             }
+
             curatorshipRepo.disapproveProject(userId, request.projectId, request.message)
             call.respond(HttpStatusCode.OK)
         }

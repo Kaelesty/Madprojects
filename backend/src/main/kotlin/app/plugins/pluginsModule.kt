@@ -21,6 +21,14 @@ val pluginsModule = module {
         )
     }
 
+//    single<Plugin> {
+//        BanHammer(
+//            profileRepo = get(),
+//            banhammerRepo = get(),
+//            checkCuratorshipUseCase = get()
+//        )
+//    }
+
     single<ExcelWizard> {
         PoiExcelWizard()
     }

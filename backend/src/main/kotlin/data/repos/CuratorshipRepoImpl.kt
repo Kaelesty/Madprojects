@@ -27,6 +27,11 @@ class CuratorshipRepoImpl(
     private val chatService: ChatService,
 ) : CuratorshipRepo {
 
+    override suspend fun checkUserIsProjectCurator(curatorId: String, projectId: String): Boolean {
+        return curatorshipService.getProjectCurator(projectId.toInt())
+            .contains(curatorId.toInt())
+    }
+
     private suspend fun getProjectInGroupViewById(projectId: Int): ProjectInGroupView {
         val project = projectService.getById(projectId)
         val group = projectGroupsService

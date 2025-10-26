@@ -42,7 +42,7 @@ class AnalyticsPlugin(
         getProjectGroupMarks()
     }
 
-    fun Route.getGroups() = get("/analytics/getGroups") {
+    private fun Route.getGroups() = get("/analytics/getGroups") {
         val principal = call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
         val projectGroupId = call.parameters["projectGroupId"]
@@ -70,7 +70,7 @@ class AnalyticsPlugin(
         )
     }
 
-    fun Route.getGroupMarks() = get("/analytics/groupMarks") {
+    private fun Route.getGroupMarks() = get("/analytics/groupMarks") {
         val principal = call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
         val projectGroupId = call.parameters["projectGroupId"]
@@ -124,7 +124,7 @@ class AnalyticsPlugin(
         )
     }
 
-    fun Route.getProjectStatusesInProjectGroupByProject() = get("/analytics/projectStatusesByProjectId") {
+    private fun Route.getProjectStatusesInProjectGroupByProject() = get("/analytics/projectStatusesByProjectId") {
         val principal = call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
         val projectId = call.parameters["projectId"]
@@ -159,7 +159,7 @@ class AnalyticsPlugin(
         )
     }
 
-    fun Route.getProjectGroupCommits() = get("/analytics/projectGroupCommits") {
+    private fun Route.getProjectGroupCommits() = get("/analytics/projectGroupCommits") {
         val principal = call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
         val groupId = call.parameters["groupId"]
@@ -191,7 +191,7 @@ class AnalyticsPlugin(
         )
     }
 
-    fun Route.getUserCommits() = get("/analytics/userCommits") {
+    private fun Route.getUserCommits() = get("/analytics/userCommits") {
         val principal = call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
 
@@ -214,7 +214,7 @@ class AnalyticsPlugin(
         )
     }
 
-    fun Route.getProjectGroupMarks() = get("/analytics/projectGroupMarks") {
+    private fun Route.getProjectGroupMarks() = get("/analytics/projectGroupMarks") {
         val principal = call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
         val groupId = call.parameters["groupId"]
@@ -240,7 +240,7 @@ class AnalyticsPlugin(
         )
     }
 
-    fun Route.getProjectStatusesInProjectGroup() = get("/analytics/projectStatuses") {
+    private fun Route.getProjectStatusesInProjectGroup() = get("/analytics/projectStatuses") {
         val principal = call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
         val groupId = call.parameters["groupId"]

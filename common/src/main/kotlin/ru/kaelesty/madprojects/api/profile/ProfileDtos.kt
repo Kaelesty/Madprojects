@@ -36,3 +36,11 @@ data class CuratorProfileResponse(
     val projectGroups: List<ProjectGroup>
 )
 
+@Serializable
+data class MinimalUserInfo(
+    val id: String,
+    val firstName: String,
+    val secondName: String,
+    val lastName: String,
+)
+

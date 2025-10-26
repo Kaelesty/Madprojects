@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktor)
     application
 }
 
@@ -52,7 +53,6 @@ kotlin {
 }
 
 application {
-    // Entry point defined in app/Main.kt
     mainClass.set("app.MainKt")
 }
 
@@ -65,5 +65,14 @@ tasks.register<JavaExec>("runBackend") {
     mainClass.set("app.MainKt")
 }
 
-// Ktor Gradle plugin is removed to avoid incompatibility with Gradle 9
-// (startShadowScripts/mainClassName). Re-add when using a compatible Gradle/plugin.
+ktor {
+    docker {
+        localImageName.set("kaelesty/ktor-docker-image")
+        imageTag.set("release")
+        jreVersion.set(JavaVersion.VERSION_17)
+    }
+}
+
+tasks.named("jibBuildTar") {
+    dependsOn("classes", "processResources")
+}
