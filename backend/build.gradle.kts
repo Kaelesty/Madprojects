@@ -36,6 +36,8 @@ dependencies {
     implementation(libs.ktor.server.auth)
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.serialization.jackson)
+    implementation(libs.ktor.server.call.logging)
+    implementation(libs.logback)
 
     implementation(libs.javax.mail)
     implementation(libs.poi)
@@ -70,6 +72,13 @@ ktor {
         localImageName.set("kaelesty/ktor-docker-image")
         imageTag.set("release")
         jreVersion.set(JavaVersion.VERSION_17)
+    }
+}
+
+jib {
+    containerizingMode = "packaged"
+    container {
+        mainClass = "app.MainKt"
     }
 }
 
