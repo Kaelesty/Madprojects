@@ -1,6 +1,7 @@
 # Gradle and build outputs
 .gradle/
 **/build/
+.kotlin/
 
 # IDE/Editor
 .idea/
