@@ -1,8 +1,8 @@
-package ru.kaelesty.madprojects.features.domain
+package ru.kaelesty.madprojects.features.auth.domain
 
 class LoginUseCase {
     suspend fun login(email: String, password: String): Result {
-        return LoginUseCase.Result.Fail
+        return Result.Fail
     }
 
     sealed interface Result {

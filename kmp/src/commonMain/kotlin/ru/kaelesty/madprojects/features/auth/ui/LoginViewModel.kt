@@ -1,4 +1,4 @@
-package ru.kaelesty.madprojects.features.login
+package ru.kaelesty.madprojects.features.auth.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ru.kaelesty.madprojects.features.auth.domain.LoginUseCase
 import ru.kaelesty.madprojects.ui.strings.StringResources
-import ru.kaelesty.madprojects.features.domain.LoginUseCase
 
 class LoginViewModel(
     private val useCase: LoginUseCase,
@@ -73,4 +73,3 @@ class LoginViewModel(
         }
     }
 }
-

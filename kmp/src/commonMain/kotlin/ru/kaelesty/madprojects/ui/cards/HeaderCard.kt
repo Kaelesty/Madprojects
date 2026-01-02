@@ -73,7 +73,7 @@ fun HeaderCard(
             text = headerText,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = (-48).dp),
+                .offset(y = (-56).dp),
             color = Palette.OnCard,
             fontFamily = headerFont,
             fontSize = 80.sp,

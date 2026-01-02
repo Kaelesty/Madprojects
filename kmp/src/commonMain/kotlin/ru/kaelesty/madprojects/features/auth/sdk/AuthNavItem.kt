@@ -4,7 +4,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import kotlinx.serialization.Serializable
-import ru.kaelesty.madprojects.feature.auth.ui.HelloScreen
+import ru.kaelesty.madprojects.features.auth.ui.HelloScreen
 import ru.kaelesty.madprojects.feature.auth.ui.LoginScreen
 import ru.kaelesty.madprojects.features.auth.ui.RegisterScreen
 import ru.kaelesty.madprojects.navigation.NavItem

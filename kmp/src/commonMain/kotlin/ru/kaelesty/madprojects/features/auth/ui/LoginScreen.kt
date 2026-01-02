@@ -8,10 +8,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.collect
 import org.koin.compose.viewmodel.koinViewModel
 import ru.kaelesty.madprojects.features.auth.sdk.AuthNavItem
-import ru.kaelesty.madprojects.features.login.LoginViewModel
+import ru.kaelesty.madprojects.features.auth.ui.LoginViewModel
 import ru.kaelesty.madprojects.ui.cards.HeaderCard
 import ru.kaelesty.madprojects.ui.theme.Palette
 import ru.kaelesty.madprojects.ui.theme.Roboto

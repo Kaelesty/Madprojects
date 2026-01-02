@@ -1,6 +1,6 @@
 @file:Suppress("FunctionName")
 
-package ru.kaelesty.madprojects.feature.auth.ui
+package ru.kaelesty.madprojects.features.auth.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
