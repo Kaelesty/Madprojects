@@ -12,6 +12,8 @@ class MainActivity : ComponentActivity() {
         GlobalContext.get().getAll()
     }
 
+    private val authContext
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         actionBar?.hide()

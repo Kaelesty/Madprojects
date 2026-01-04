@@ -1,19 +1,18 @@
 package ru.kaelesty.madprojects.features.auth.data
 
-import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.auth.domain.AuthController
 import ru.kaelesty.madprojects.features.auth.domain.Tokens
 
-class AuthControllerImpl: AuthController {
-
-    override val authContext: AuthContext
-        get() = TODO("Not yet implemented")
+class AuthControllerImpl(
+    private val contextImpl: AuthContextImpl,
+): AuthController {
 
     override fun onUnauthorizedResponse() {
-        TODO("Not yet implemented")
+        // todo - try refresh
+        contextImpl.invalidateTokens()
     }
 
     override fun onAuthorized(tokens: Tokens) {
-        TODO("Not yet implemented")
+        contextImpl.provideTokens(tokens)
     }
 }
