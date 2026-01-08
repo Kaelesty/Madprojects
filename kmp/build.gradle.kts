@@ -29,6 +29,7 @@ kotlin {
         val commonMain by getting {
             kotlin.srcDir(generatedKtorConfigDir)
             dependencies {
+                implementation(project(":common"))
                 implementation(compose.runtime)
                 implementation(compose.ui)
                 implementation(compose.foundation)
@@ -54,6 +55,8 @@ kotlin {
             dependencies {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.ktor.client.cio)
+                implementation(libs.androidx.security.crypto)
+                implementation(libs.koin.android)
             }
         }
 

@@ -1,16 +1,22 @@
 package ru.kaelesty.madprojects.features.auth.domain
 
 import io.ktor.http.HttpStatusCode
-import ru.kaelesty.madprojects.features.auth.data.LoginApi
-import ru.kaelesty.madprojects.features.auth.data.LoginApi.LoginRequest
+import ru.kaelesty.madprojects.features.auth.data.api.LoginApi
+import ru.kaelesty.madprojects.features.auth.data.api.LoginApi.LoginRequest
 
 class LoginUseCase(
     private val api: LoginApi,
+    private val authController: AuthController,
 ) {
     suspend fun login(email: String, password: String): Result {
-        val status = api.login(LoginRequest(email = email, password = password))
-        return when (status) {
-            HttpStatusCode.OK -> Result.Success
+        val response = api.login(LoginRequest(email = email, password = password))
+        return when (response?.status) {
+            HttpStatusCode.OK -> {
+                val tokens = response.tokens ?: return Result.Unavailable
+                val userType = response.userType ?: return Result.Unavailable
+                authController.onAuthorized(tokens, userType)
+                Result.Success
+            }
             HttpStatusCode.Forbidden -> Result.Fail
             else -> Result.Unavailable
         }

@@ -28,8 +28,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import domain.auth.UserType
 import org.koin.compose.viewmodel.koinViewModel
-import ru.kaelesty.madprojects.features.auth.domain.UserType
 import ru.kaelesty.madprojects.features.auth.sdk.AuthNavItem
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
 import ru.kaelesty.madprojects.ui.cards.HeaderCard
@@ -52,7 +52,7 @@ fun RegisterScreen(
     LaunchedEffect(vm) {
         vm.events.collect { event ->
             if (event is RegisterViewModel.Event.Successful) {
-                navigator.toHello()
+                navigator.toProfile()
             }
         }
     }

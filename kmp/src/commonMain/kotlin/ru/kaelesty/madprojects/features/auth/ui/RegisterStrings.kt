@@ -1,6 +1,6 @@
 package ru.kaelesty.madprojects.features.auth.ui
 
-import ru.kaelesty.madprojects.features.auth.domain.UserType
+import domain.auth.UserType
 
 object RegisterStrings {
     const val Title = "Регистрация"

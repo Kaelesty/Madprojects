@@ -6,8 +6,8 @@ import org.koin.dsl.binds
 import org.koin.dsl.module
 import ru.kaelesty.madprojects.features.auth.data.AuthContextImpl
 import ru.kaelesty.madprojects.features.auth.data.AuthControllerImpl
-import ru.kaelesty.madprojects.features.auth.data.LoginApi
-import ru.kaelesty.madprojects.features.auth.data.RegisterApi
+import ru.kaelesty.madprojects.features.auth.data.api.LoginApi
+import ru.kaelesty.madprojects.features.auth.data.api.RegisterApi
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.auth.domain.AuthController
 import ru.kaelesty.madprojects.features.auth.domain.LoginUseCase
@@ -15,7 +15,6 @@ import ru.kaelesty.madprojects.features.auth.domain.RegisterUseCase
 import ru.kaelesty.madprojects.features.auth.ui.LoginViewModel
 import ru.kaelesty.madprojects.features.auth.ui.RegisterViewModel
 import ru.kaelesty.madprojects.navigation.NavItem
-import kotlin.math.cos
 
 val authModule = module {
 
@@ -26,9 +25,10 @@ val authModule = module {
         AuthContextImpl::class,
     )
 
-    single {
+    single(createdAtStart = true) {
         AuthControllerImpl(
-            contextImpl = get()
+            contextImpl = get(),
+            storage = get(),
         )
     } bind AuthController::class
 
@@ -37,7 +37,7 @@ val authModule = module {
     }
 
     single {
-        LoginUseCase(get())
+        LoginUseCase(get(), get())
     }
 
     single {
@@ -45,7 +45,7 @@ val authModule = module {
     }
 
     single {
-        RegisterUseCase(get())
+        RegisterUseCase(get(), get())
     }
 
     viewModel {
@@ -67,4 +67,3 @@ val authModule = module {
         AuthNavItem::class,
     )
 }
-

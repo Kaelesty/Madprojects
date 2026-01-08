@@ -1,6 +1,6 @@
 package ru.kaelesty.madprojects.features.auth.data
 
-import androidx.compose.runtime.ProvidedValue
+import domain.auth.UserType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,23 +16,30 @@ class AuthContextImpl: AuthContext {
 
     private val scope: CoroutineScope by lazy { CoroutineScope(Dispatchers.Main) }
 
-    private val tokens = MutableStateFlow<Tokens?>(null)
+    private val _tokens = MutableStateFlow<Tokens?>(null)
+    private val userTypeState = MutableStateFlow<UserType?>(null)
     override val isAuthenticated: StateFlow<Boolean>
-        get() = tokens.map { it != null }.stateIn(
+        get() = _tokens.map { it != null }.stateIn(
             scope = scope,
             started = SharingStarted.Eagerly,
             initialValue = false,
         )
+    override val userType: StateFlow<UserType?>
+        get() = userTypeState
+    override val tokens: StateFlow<Tokens?>
+        get() = _tokens
 
-    fun provideTokens(newValue: Tokens) {
+    fun provideAuth(tokens: Tokens, userType: UserType) {
         scope.launch {
-            tokens.emit(newValue)
+            _tokens.emit(tokens)
+            userTypeState.emit(userType)
         }
     }
 
-    fun invalidateTokens() {
+    fun invalidateAuth() {
         scope.launch {
-            tokens.emit(null)
+            _tokens.emit(null)
+            userTypeState.emit(null)
         }
     }
 }

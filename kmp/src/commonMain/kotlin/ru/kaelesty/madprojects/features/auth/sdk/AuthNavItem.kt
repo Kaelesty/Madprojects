@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import ru.kaelesty.madprojects.features.auth.ui.HelloScreen
 import ru.kaelesty.madprojects.feature.auth.ui.LoginScreen
 import ru.kaelesty.madprojects.features.auth.ui.RegisterScreen
+import ru.kaelesty.madprojects.features.profile.sdk.ProfileNavItem
 import ru.kaelesty.madprojects.navigation.NavItem
 
 class AuthNavItem: NavItem {
@@ -19,6 +20,14 @@ class AuthNavItem: NavItem {
         fun toLogin() = navController.navigate(Route.Login)
 
         fun toHello() = navController.navigate(Route.Hello)
+
+        fun toProfile() {
+            navController.navigate(ProfileNavItem.Route.Profile) {
+                popUpTo(Route.Hello) { inclusive = true }
+                launchSingleTop = true
+                restoreState = false
+            }
+        }
     }
 
     override fun applyOn(builder: NavGraphBuilder, navController: NavController) = with(builder) {

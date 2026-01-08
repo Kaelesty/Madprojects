@@ -2,6 +2,7 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import domain.auth.UserType
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -9,7 +10,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.kaelesty.madprojects.features.auth.domain.RegisterUseCase
-import ru.kaelesty.madprojects.features.auth.domain.UserType
 
 class RegisterViewModel(
     private val useCase: RegisterUseCase,

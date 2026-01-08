@@ -26,7 +26,7 @@ fun LoginScreen(
 ) {
     val vm = koinViewModel<LoginViewModel>()
     val state by vm.state.collectAsState()
-    LaunchedEffect(vm) { vm.events.collect { if (it is LoginViewModel.Event.Successful) navigator.toHello() } }
+    LaunchedEffect(vm) { vm.events.collect { if (it is LoginViewModel.Event.Successful) navigator.toProfile() } }
 
     Surface(color = Palette.Background) {
         Box(

@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.auth.sdk.AuthNavItem
 import ru.kaelesty.madprojects.features.checkin.sdk.CheckInNavItem
+import ru.kaelesty.madprojects.features.profile.sdk.ProfileNavItem
 import ru.kaelesty.madprojects.navigation.NavItem
 
 @Composable
@@ -29,6 +30,13 @@ fun App(
         LaunchedEffect(isAuthenticated) {
             if (isAuthenticated == false) {
                 navController.navigate(authStart) {
+                    popUpTo(0) { inclusive = true }
+                    launchSingleTop = true
+                    restoreState = false
+                }
+            }
+            else {
+                navController.navigate(ProfileNavItem.Route.Profile) {
                     popUpTo(0) { inclusive = true }
                     launchSingleTop = true
                     restoreState = false
