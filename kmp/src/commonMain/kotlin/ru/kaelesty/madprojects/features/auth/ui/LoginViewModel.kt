@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.kaelesty.madprojects.features.auth.domain.LoginUseCase
 import ru.kaelesty.madprojects.ui.strings.StringResources
+import ru.kaelesty.madprojects.utils.KLogger
 
 class LoginViewModel(
     private val useCase: LoginUseCase,
@@ -47,29 +48,47 @@ class LoginViewModel(
         val email = state.value.email.trim()
         val password = state.value.password
 
+        KLogger.d(TAG) { "submit: emailLength=${email.length}" }
         if (email.isBlank()) {
+            KLogger.w(TAG) { "validation failed: empty email" }
             _state.update { it.copy(errorMessage = str.ErrorEmptyEmail) }
             return
         }
         if (!emailRegex.matches(email)) {
+            KLogger.w(TAG) { "validation failed: invalid email" }
             _state.update { it.copy(errorMessage = str.ErrorInvalidEmail) }
             return
         }
         if (password.isBlank()) {
+            KLogger.w(TAG) { "validation failed: empty password" }
             _state.update { it.copy(errorMessage = str.ErrorEmptyPassword) }
             return
         }
         if (!passwordRegex.matches(password)) {
+            KLogger.w(TAG) { "validation failed: password policy mismatch" }
             _state.update { it.copy(errorMessage = str.ErrorInvalidPasswordPolicy) }
             return
         }
 
         viewModelScope.launch {
             when (useCase.login(email, password)) {
-                LoginUseCase.Result.Success -> _events.emit(Event.Successful)
-                LoginUseCase.Result.Fail -> _state.update { it.copy(errorMessage = str.ErrorLogin) }
-                LoginUseCase.Result.Unavailable -> _state.update { it.copy(errorMessage = str.ErrorUnavailable) }
+                LoginUseCase.Result.Success -> {
+                    KLogger.i(TAG) { "login success" }
+                    _events.emit(Event.Successful)
+                }
+                LoginUseCase.Result.Fail -> {
+                    KLogger.w(TAG) { "login failed: invalid credentials" }
+                    _state.update { it.copy(errorMessage = str.ErrorLogin) }
+                }
+                LoginUseCase.Result.Unavailable -> {
+                    KLogger.w(TAG) { "login failed: server unavailable" }
+                    _state.update { it.copy(errorMessage = str.ErrorUnavailable) }
+                }
             }
         }
+    }
+
+    private companion object {
+        private const val TAG = "LoginViewModel"
     }
 }

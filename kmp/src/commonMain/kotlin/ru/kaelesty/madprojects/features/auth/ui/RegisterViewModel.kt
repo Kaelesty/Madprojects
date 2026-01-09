@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.kaelesty.madprojects.features.auth.domain.RegisterUseCase
+import ru.kaelesty.madprojects.utils.KLogger
 
 class RegisterViewModel(
     private val useCase: RegisterUseCase,
@@ -79,13 +80,16 @@ class RegisterViewModel(
     fun nextPage() {
         val error = validateFirstPage(state.value)
         if (error != null) {
+            KLogger.w(TAG) { "nextPage validation failed: $error" }
             updateError(error)
             return
         }
+        KLogger.d(TAG) { "nextPage success" }
         update { it.copy(isFirstPage = false) }
     }
 
     fun previousPage() {
+        KLogger.d(TAG) { "previousPage" }
         update { it.copy(isFirstPage = true) }
     }
 
@@ -93,16 +97,19 @@ class RegisterViewModel(
         val current = state.value
         val firstError = validateFirstPage(current)
         if (firstError != null) {
+            KLogger.w(TAG) { "submit validation failed (first page): $firstError" }
             _state.update { it.copy(isFirstPage = true, error = firstError) }
             return
         }
 
         val secondError = validateSecondPage(current)
         if (secondError != null) {
+            KLogger.w(TAG) { "submit validation failed (second page): $secondError" }
             updateError(secondError)
             return
         }
 
+        KLogger.d(TAG) { "submit: userType=${current.userType}" }
         viewModelScope.launch {
             when (
                 useCase.register(
@@ -116,11 +123,26 @@ class RegisterViewModel(
                     userType = current.userType,
                 )
             ) {
-                RegisterUseCase.Result.Success -> _events.emit(Event.Successful)
-                RegisterUseCase.Result.EmailTaken -> updateError(ValidationError.EmailTaken)
-                RegisterUseCase.Result.UsernameTaken -> updateError(ValidationError.UsernameTaken)
-                RegisterUseCase.Result.WeakPassword -> updateError(ValidationError.WeakPassword)
-                RegisterUseCase.Result.Unavailable -> updateError(ValidationError.Unavailable)
+                RegisterUseCase.Result.Success -> {
+                    KLogger.i(TAG) { "register success" }
+                    _events.emit(Event.Successful)
+                }
+                RegisterUseCase.Result.EmailTaken -> {
+                    KLogger.w(TAG) { "register failed: email taken" }
+                    updateError(ValidationError.EmailTaken)
+                }
+                RegisterUseCase.Result.UsernameTaken -> {
+                    KLogger.w(TAG) { "register failed: username taken" }
+                    updateError(ValidationError.UsernameTaken)
+                }
+                RegisterUseCase.Result.WeakPassword -> {
+                    KLogger.w(TAG) { "register failed: weak password" }
+                    updateError(ValidationError.WeakPassword)
+                }
+                RegisterUseCase.Result.Unavailable -> {
+                    KLogger.w(TAG) { "register failed: server unavailable" }
+                    updateError(ValidationError.Unavailable)
+                }
             }
         }
     }
@@ -165,7 +187,11 @@ class RegisterViewModel(
     }
 
     private fun updateError(error: ValidationError) {
+        KLogger.d(TAG) { "updateError: $error" }
         _state.update { it.copy(error = error) }
     }
-}
 
+    private companion object {
+        private const val TAG = "RegisterViewModel"
+    }
+}

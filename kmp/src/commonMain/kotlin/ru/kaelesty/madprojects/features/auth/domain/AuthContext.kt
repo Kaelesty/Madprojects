@@ -10,5 +10,9 @@ interface AuthContext {
 
     val userType: StateFlow<UserType?>
 
-    val tokens: StateFlow<Tokens?>
+    suspend fun getAccessToken(): String?
+
+    fun onUnauthorizedResponse()
+
+    fun onAuthorized(tokens: Tokens, userType: UserType)
 }

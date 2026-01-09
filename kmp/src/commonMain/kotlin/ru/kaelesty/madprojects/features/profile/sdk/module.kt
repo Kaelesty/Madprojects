@@ -5,13 +5,15 @@ import org.koin.dsl.binds
 import org.koin.dsl.module
 import ru.kaelesty.madprojects.features.profile.data.CommonProfileApi
 import ru.kaelesty.madprojects.features.profile.domain.GetCommonProfileUseCase
+import ru.kaelesty.madprojects.features.profile.domain.GetUserProjectsUseCase
 import ru.kaelesty.madprojects.features.profile.ui.CommonProfileViewModel
 import ru.kaelesty.madprojects.navigation.NavItem
 
 val profileModule = module {
     single { CommonProfileApi(get()) }
     single { GetCommonProfileUseCase(get(), get()) }
-    viewModel { CommonProfileViewModel(get()) }
+    single { GetUserProjectsUseCase(get(), get()) }
+    viewModel { CommonProfileViewModel(get(), get()) }
 
     single { ProfileNavItem(get()) } binds arrayOf(
         NavItem::class,

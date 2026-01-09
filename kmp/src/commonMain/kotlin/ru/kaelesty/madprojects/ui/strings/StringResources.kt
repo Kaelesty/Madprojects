@@ -19,5 +19,20 @@ object StringResources {
     const val ErrorInvalidPasswordPolicy = "Пароль от 10 символов, с цифрой, строчной и прописной буквой и спецсимволом"
     const val ErrorLogin = "Неверный e-mail или пароль"
     const val ErrorUnavailable = "Сервис временно недоступен"
+
+    const val HeaderLogo = "mp"
+    const val ProfileTitle = "Профиль"
+    const val ProfilePlaceholder = "Профиль"
+    const val CuratorProfilePlaceholder = "Профиль куратора"
+    const val ProfileAvatar = "Аватар профиля"
+    const val ProfileEmailLabel = "Email: "
+    const val ProfileGroupLabel = "Группа: "
+    const val ProfileProjectsTitle = "Проекты"
+    const val ProfileProjectsEmpty = "Проектов пока нет"
+    const val LoadError = "Ошибка загрузки"
+    const val RetryButton = "Попробовать снова"
+    const val ProjectStatusPending = "На проверке"
+    const val ProjectStatusApproved = "Одобрен"
+    const val ProjectStatusUnapproved = "Отклонен"
 }
 

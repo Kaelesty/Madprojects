@@ -9,8 +9,8 @@ object KLogger {
         config = loggerConfigInit(platformLogWriter())
     )
 
-    fun d(tag: String, msg: () -> String) = logger.d(msg(), null, tag)
-    fun i(tag: String, msg: () -> String) = logger.i(msg(), null, tag)
-    fun w(tag: String, msg: () -> String) = logger.w(msg(), null, tag)
-    fun e(tag: String, t: Throwable? = null, msg: () -> String) = logger.e(msg(), t, tag)
+    fun d(tag: String, msg: () -> String) = logger.d("KLogger: ${msg()}", null, tag)
+    fun i(tag: String, msg: () -> String) = logger.i("KLogger: ${msg()}", null, tag)
+    fun w(tag: String, msg: () -> String) = logger.w("KLogger: ${msg()}", null, tag)
+    fun e(tag: String, t: Throwable? = null, msg: () -> String) = logger.e("KLogger: ${msg()}", t, tag)
 }

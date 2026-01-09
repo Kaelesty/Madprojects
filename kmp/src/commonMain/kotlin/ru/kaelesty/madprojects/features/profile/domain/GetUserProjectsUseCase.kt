@@ -1,13 +1,12 @@
 package ru.kaelesty.madprojects.features.profile.domain
 
-import domain.profile.CommonProfileResponse
+import domain.profile.ProfileProject
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.delay
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.profile.data.CommonProfileApi
 import ru.kaelesty.madprojects.utils.KLogger
 
-class GetCommonProfileUseCase(
+class GetUserProjectsUseCase(
     private val api: CommonProfileApi,
     private val authContext: AuthContext,
 ) {
@@ -22,15 +21,14 @@ class GetCommonProfileUseCase(
             return Result.Fail
         }
         KLogger.d(TAG) { "load response: status=${response.status} hasProfile=${response.profile != null}" }
-        delay(10000)
         return when (response.status) {
             HttpStatusCode.OK -> {
                 val profile = response.profile ?: run {
                     KLogger.w(TAG) { "load failed: profile missing" }
                     return Result.Fail
                 }
-                KLogger.i(TAG) { "load success: projects=${profile.projects.size} githubMeta=${profile.githubMeta != null}" }
-                Result.Success(profile)
+                KLogger.i(TAG) { "load success: projects=${profile.projects.size}" }
+                Result.Success(profile.projects)
             }
             else -> {
                 KLogger.w(TAG) { "load failed: status=${response.status}" }
@@ -40,11 +38,11 @@ class GetCommonProfileUseCase(
     }
 
     sealed interface Result {
-        data class Success(val profile: CommonProfileResponse) : Result
+        data class Success(val projects: List<ProfileProject>) : Result
         data object Fail : Result
     }
 
     private companion object {
-        private const val TAG = "GetCommonProfileUseCase"
+        private const val TAG = "GetUserProjectsUseCase"
     }
 }

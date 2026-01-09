@@ -4,10 +4,11 @@ import domain.auth.RegisterRequest
 import domain.auth.UserType
 import io.ktor.http.HttpStatusCode
 import ru.kaelesty.madprojects.features.auth.data.api.RegisterApi
+import ru.kaelesty.madprojects.utils.KLogger
 
 class RegisterUseCase(
     private val api: RegisterApi,
-    private val authController: AuthController,
+    private val authContext: AuthContext,
 ) {
     suspend fun register(
         username: String,
@@ -19,6 +20,7 @@ class RegisterUseCase(
         password: String,
         userType: UserType,
     ): Result {
+        KLogger.d(TAG) { "register start: userType=$userType emailLength=${email.length} usernameLength=${username.length}" }
         val response = api.register(
             RegisterRequest(
                 username = username,
@@ -31,11 +33,22 @@ class RegisterUseCase(
                 userType = userType,
             )
         )
-        return when (response?.status) {
+        if (response == null) {
+            KLogger.w(TAG) { "register failed: response is null" }
+            return Result.Unavailable
+        }
+        KLogger.d(TAG) { "register response: status=${response.status} hasTokens=${response.tokens != null} hasUserType=${response.userType != null}" }
+        return when (response.status) {
             HttpStatusCode.OK -> {
-                val tokens = response.tokens ?: return Result.Unavailable
-                val userType = response.userType ?: return Result.Unavailable
-                authController.onAuthorized(tokens, userType)
+                val tokens = response.tokens ?: run {
+                    KLogger.w(TAG) { "register failed: tokens missing" }
+                    return Result.Unavailable
+                }
+                val userType = response.userType ?: run {
+                    KLogger.w(TAG) { "register failed: userType missing" }
+                    return Result.Unavailable
+                }
+                authContext.onAuthorized(tokens, userType)
                 Result.Success
             }
             HttpStatusCode.Conflict -> Result.EmailTaken
@@ -51,5 +64,9 @@ class RegisterUseCase(
         data object UsernameTaken : Result
         data object WeakPassword : Result
         data object Unavailable : Result
+    }
+
+    private companion object {
+        private const val TAG = "RegisterUseCase"
     }
 }
