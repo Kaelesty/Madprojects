@@ -1,8 +1,8 @@
 package ru.kaelesty.madprojects.features.auth.domain
 
 import io.ktor.http.HttpStatusCode
+import ru.kaelesty.madprojects.api.auth.LoginRequest
 import ru.kaelesty.madprojects.features.auth.data.api.LoginApi
-import ru.kaelesty.madprojects.features.auth.data.api.LoginApi.LoginRequest
 
 class LoginUseCase(
     private val api: LoginApi,

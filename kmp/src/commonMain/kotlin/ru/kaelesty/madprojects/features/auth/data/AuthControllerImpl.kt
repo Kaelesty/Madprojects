@@ -5,9 +5,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
+import ru.kaelesty.madprojects.api.auth.Tokens
 import ru.kaelesty.madprojects.features.auth.data.storage.AuthStorage
 import ru.kaelesty.madprojects.features.auth.domain.AuthController
-import ru.kaelesty.madprojects.features.auth.domain.Tokens
 import ru.kaelesty.madprojects.utils.KLogger
 
 class AuthControllerImpl(
@@ -30,8 +30,7 @@ class AuthControllerImpl(
         scope.launch {
             storage.save(
                 item = AuthStorage.Item(
-                    access = tokens.access,
-                    refresh = tokens.refresh,
+                    tokens = tokens,
                     userType = userType,
                 )
             )
@@ -44,7 +43,7 @@ class AuthControllerImpl(
             storage.load()?.let { savedSession ->
                 // todo check expiration
                 contextImpl.provideAuth(
-                    tokens = Tokens(savedSession.access, savedSession.refresh),
+                    tokens = savedSession.tokens,
                     userType = savedSession.userType,
                 )
                 KLogger.d(TAG) { "tryLoadSessionFromStorage succeed" }

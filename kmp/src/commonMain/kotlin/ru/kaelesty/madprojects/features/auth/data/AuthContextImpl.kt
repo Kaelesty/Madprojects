@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import ru.kaelesty.madprojects.api.auth.Tokens
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
-import ru.kaelesty.madprojects.features.auth.domain.Tokens
 
 class AuthContextImpl: AuthContext {
 

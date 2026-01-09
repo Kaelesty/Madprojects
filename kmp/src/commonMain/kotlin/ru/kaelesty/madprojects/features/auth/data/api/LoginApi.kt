@@ -1,6 +1,5 @@
 package ru.kaelesty.madprojects.features.auth.data.api
 
-import domain.auth.UserType
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.expectSuccess
@@ -9,9 +8,10 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import kotlinx.serialization.Serializable
 import ru.kaelesty.madprojects.features.auth.data.AuthApiResponse
-import ru.kaelesty.madprojects.features.auth.domain.Tokens
+import ru.kaelesty.madprojects.api.auth.AuthorizedResponse
+import ru.kaelesty.madprojects.api.auth.LoginRequest
+import ru.kaelesty.madprojects.api.auth.Tokens
 import ru.kaelesty.madprojects.utils.KLogger
 
 class LoginApi(
@@ -26,8 +26,14 @@ class LoginApi(
             }
             KLogger.d(TAG) { "Login response status=${response.status}" }
             val authPayload = if (response.status == HttpStatusCode.OK) {
-                val body = response.body<AuthorizedTokensResponse>()
-                Tokens(access = body.accessToken, refresh = body.refreshToken) to body.userType
+                val body = response.body<AuthorizedResponse>()
+                val tokens = Tokens(
+                    refreshToken = body.refreshToken,
+                    accessToken = body.accessToken,
+                    accessExpiresAt = body.accessExpiresAt,
+                    refreshExpiresAt = body.refreshExpiresAt,
+                )
+                tokens to body.userType
             } else {
                 null
             }
@@ -41,19 +47,6 @@ class LoginApi(
             null
         }
     }
-
-    @Serializable
-    data class LoginRequest(
-        val email: String,
-        val password: String,
-    )
-
-    @Serializable
-    private data class AuthorizedTokensResponse(
-        val refreshToken: String,
-        val accessToken: String,
-        val userType: UserType,
-    )
 
     private companion object {
         private const val TAG = "ktor-LoginApi"

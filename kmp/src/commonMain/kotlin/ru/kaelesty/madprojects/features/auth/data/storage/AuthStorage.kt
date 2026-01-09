@@ -1,6 +1,7 @@
 package ru.kaelesty.madprojects.features.auth.data.storage
 
 import domain.auth.UserType
+import ru.kaelesty.madprojects.api.auth.Tokens
 
 interface AuthStorage {
 
@@ -11,8 +12,7 @@ interface AuthStorage {
     suspend fun clear()
 
     data class Item(
-        val access: String,
-        val refresh: String,
-        val userType: UserType
+        val tokens: Tokens,
+        val userType: UserType,
     )
 }

@@ -1,9 +1,9 @@
 package ru.kaelesty.madprojects.features.auth.domain
 
+import domain.auth.RegisterRequest
 import domain.auth.UserType
 import io.ktor.http.HttpStatusCode
 import ru.kaelesty.madprojects.features.auth.data.api.RegisterApi
-import ru.kaelesty.madprojects.features.auth.data.api.RegisterApi.RegisterRequest
 
 class RegisterUseCase(
     private val api: RegisterApi,

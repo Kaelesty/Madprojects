@@ -11,7 +11,7 @@ class GetCommonProfileUseCase(
     private val authContext: AuthContext,
 ) {
     suspend fun load(): Result {
-        val accessToken = authContext.tokens.value?.access ?: return Result.Fail
+        val accessToken = authContext.tokens.value?.accessToken ?: return Result.Fail
         val response = api.getCommonProfile(accessToken) ?: return Result.Fail
         delay(10000)
         return when (response.status) {
