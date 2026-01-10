@@ -16,12 +16,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +46,8 @@ import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
 import ru.kaelesty.madprojects.ui.cards.ProfileCard
 import ru.kaelesty.madprojects.ui.headers.ScreenHeader
+import ru.kaelesty.madprojects.ui.menus.AppDropdownMenu
+import ru.kaelesty.madprojects.ui.menus.AppDropdownMenuItem
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.ui.theme.Palette
 import ru.kaelesty.madprojects.ui.theme.Roboto
@@ -171,16 +179,50 @@ private fun ProjectsCard(
     state: CommonProfileViewModel.ProjectsState,
     onRetry: () -> Unit,
 ) {
+    val (menuExpanded, setMenuExpanded) = remember { mutableStateOf(false) }
+    val menuItems = listOf(
+        AppDropdownMenuItem(
+            text = StringResources.ProfileProjectsCreate,
+            onClick = { setMenuExpanded(false) }
+        ),
+        AppDropdownMenuItem(
+            text = StringResources.ProfileProjectsJoin,
+            onClick = { setMenuExpanded(false) }
+        ),
+    )
     ProfileCard {
-        Text(
-            text = StringResources.ProfileProjectsTitle,
-            style = TextStyle(
-                color = Palette.OnCard,
-                fontFamily = Roboto,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = StringResources.ProfileProjectsTitle,
+                style = TextStyle(
+                    color = Palette.OnCard,
+                    fontFamily = Roboto,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                )
             )
-        )
+            Spacer(Modifier.weight(1f))
+            Box {
+                IconButton(
+                    onClick = { setMenuExpanded(true) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = StringResources.ProfileProjectsMenu,
+                        tint = Palette.OnCard
+                    )
+                }
+                AppDropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { setMenuExpanded(false) },
+                    items = menuItems,
+                )
+            }
+        }
         Spacer(Modifier.height(12.dp))
         when (state) {
             CommonProfileViewModel.ProjectsState.Loading -> {
