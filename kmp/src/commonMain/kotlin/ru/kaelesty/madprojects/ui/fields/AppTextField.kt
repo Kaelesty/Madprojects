@@ -35,7 +35,9 @@ fun AppTextField(
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-    singleLine: Boolean = true
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
 ) {
     val shape = RoundedCornerShape(6.dp)
     Column(modifier) {
@@ -59,6 +61,8 @@ fun AppTextField(
             },
             textStyle = TextStyle(color = Palette.FieldText, fontFamily = Roboto, fontSize = 15.sp),
             singleLine = singleLine,
+            minLines = minLines,
+            maxLines = maxLines,
             keyboardOptions = keyboardOptions,
             visualTransformation = VisualTransformation.None,
             shape = shape,

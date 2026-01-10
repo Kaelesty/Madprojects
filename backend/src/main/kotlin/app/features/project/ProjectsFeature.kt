@@ -6,6 +6,7 @@ import domain.activity.ActivityRepo
 import domain.activity.ActivityType
 import domain.profile.ProfileRepo
 import domain.project.CreateProjectRequest
+import domain.project.CreateProjectResponse
 import domain.project.ProjectRepo
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -240,7 +241,7 @@ class ProjectsFeatureImpl(
                 ),
                 userId = userId,
             )
-            call.respond(HttpStatusCode.OK, mapOf<String, String>("projectId" to projectId))
+            call.respond(HttpStatusCode.OK, CreateProjectResponse(projectId))
         }
     }
 }

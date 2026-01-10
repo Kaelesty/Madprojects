@@ -11,3 +11,8 @@ data class CreateProjectRequest(
     val repoLinks: List<String>,
     val projectGroupId: String,
 )
+
+@Serializable
+data class CreateProjectResponse(
+    val projectId: String,
+)

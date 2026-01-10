@@ -14,6 +14,8 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.RoutingContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import ru.kaelesty.madprojects.api.invites.ProjectInviteResponse
+import ru.kaelesty.madprojects.api.invites.UseInviteResponse
 
 interface InvitesFeature {
 
@@ -44,9 +46,7 @@ class InvitesFeatureImpl(
             val invite = invitesRepo.getProjectInvite(projectId)
             call.respondText(
                 text = Json.encodeToString(
-                    mapOf(
-                        "invite" to invite
-                    )
+                    ProjectInviteResponse(invite)
                 ),
                 contentType = ContentType.Application.Json,
                 status = HttpStatusCode.OK
@@ -66,9 +66,7 @@ class InvitesFeatureImpl(
             val invite = invitesRepo.refreshProjectInvite(projectId)
             call.respondText(
                 text = Json.encodeToString(
-                    mapOf(
-                        "invite" to invite
-                    )
+                    ProjectInviteResponse(invite)
                 ),
                 contentType = ContentType.Application.Json,
                 status = HttpStatusCode.OK
@@ -106,9 +104,7 @@ class InvitesFeatureImpl(
 
             call.respondText(
                 text = Json.encodeToString(
-                    mapOf(
-                        "projectId" to projectId
-                    )
+                    UseInviteResponse(projectId)
                 ),
                 contentType = ContentType.Application.Json,
                 status = HttpStatusCode.OK
