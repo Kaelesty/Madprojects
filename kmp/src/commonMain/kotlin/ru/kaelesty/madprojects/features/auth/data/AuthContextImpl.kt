@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,13 +26,19 @@ class AuthContextImpl(
     private val scope: CoroutineScope by lazy { CoroutineScope(Dispatchers.Main) }
 
     private val _tokens = MutableStateFlow<Tokens?>(null)
+    private val isAuthenticatedState: StateFlow<Boolean> by lazy {
+        _tokens
+            .map { it != null }
+            .distinctUntilChanged()
+            .stateIn(
+                scope = scope,
+                started = SharingStarted.Eagerly,
+                initialValue = false,
+            )
+    }
     private val userTypeState = MutableStateFlow<UserType?>(null)
     override val isAuthenticated: StateFlow<Boolean>
-        get() = _tokens.map { it != null }.stateIn(
-            scope = scope,
-            started = SharingStarted.Eagerly,
-            initialValue = false,
-        )
+        get() = isAuthenticatedState
     override val userType: StateFlow<UserType?>
         get() = userTypeState
 
