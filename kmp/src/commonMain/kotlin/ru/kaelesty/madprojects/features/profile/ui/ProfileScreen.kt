@@ -1,6 +1,7 @@
 package ru.kaelesty.madprojects.features.profile.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,7 +72,8 @@ fun ProfileScreen(
     ProfileScaffold(title = StringResources.ProfileTitle) {
         when (userType) {
             UserType.Common -> CommonProfileContent(
-                onCreateProject = navigator::toCreateProject
+                onCreateProject = navigator::toCreateProject,
+                onProjectClick = navigator::toProject
             )
             UserType.Curator -> CuratorProfileContent()
             null -> ProfilePlaceholderContent(StringResources.ProfilePlaceholder)
@@ -82,6 +84,7 @@ fun ProfileScreen(
 @Composable
 private fun CommonProfileContent(
     onCreateProject: () -> Unit,
+    onProjectClick: (String) -> Unit,
 ) {
     val vm = koinViewModel<CommonProfileViewModel>()
     val state by vm.state.collectAsState()
@@ -185,7 +188,8 @@ private fun CommonProfileContent(
             state = projectsState,
             onRetry = vm::loadProjects,
             onCreateProject = onCreateProject,
-            onJoinProject = vm::openJoinDialog
+            onJoinProject = vm::openJoinDialog,
+            onProjectClick = onProjectClick
         )
     }
 }
@@ -218,6 +222,7 @@ private fun ProjectsCard(
     onRetry: () -> Unit,
     onCreateProject: () -> Unit,
     onJoinProject: () -> Unit,
+    onProjectClick: (String) -> Unit,
 ) {
     val (menuExpanded, setMenuExpanded) = remember { mutableStateOf(false) }
     val menuItems = listOf(
@@ -292,7 +297,7 @@ private fun ProjectsCard(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         state.projects.forEach { project ->
-                            ProjectItem(project)
+                            ProjectItem(project, onClick = { onProjectClick(project.id) })
                         }
                     }
                 }
@@ -407,12 +412,16 @@ private fun JoinProjectDialog(
 }
 
 @Composable
-private fun ProjectItem(project: ProfileProject) {
+private fun ProjectItem(
+    project: ProfileProject,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(

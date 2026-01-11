@@ -1,35 +1,40 @@
-package ru.kaelesty.madprojects.features.profile.sdk
+package ru.kaelesty.madprojects.features.project.sdk
 
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import kotlinx.serialization.Serializable
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
-import ru.kaelesty.madprojects.features.profile.ui.ProfileScreen
-import ru.kaelesty.madprojects.features.project.sdk.ProjectNavItem
-import ru.kaelesty.madprojects.features.projectcreate.sdk.ProjectCreateNavItem
+import ru.kaelesty.madprojects.features.project.ui.ProjectScreen
 import ru.kaelesty.madprojects.navigation.NavItem
 
-class ProfileNavItem(
+class ProjectNavItem(
     private val authContext: AuthContext,
 ) : NavItem {
 
     class Navigator(
         private val navController: NavController,
     ) {
-        fun toCreateProject() = navController.navigate(ProjectCreateNavItem.Route.CreateProject)
-        fun toProject(projectId: String) = navController.navigate(ProjectNavItem.Route.Project(projectId))
+        fun back() = navController.popBackStack()
     }
 
     override fun applyOn(builder: NavGraphBuilder, navController: NavController) = with(builder) {
         val navigator = Navigator(navController)
-        composable<Route.Profile> {
-            ProfileScreen(authContext, navigator)
+        composable<Route.Project> { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getString("projectId")
+            if (projectId == null) {
+                return@composable
+            }
+            ProjectScreen(
+                authContext = authContext,
+                projectId = projectId,
+                navigator = navigator
+            )
         }
     }
 
     @Serializable
     sealed interface Route {
-        @Serializable data object Profile : Route
+        @Serializable data class Project(val projectId: String) : Route
     }
 }

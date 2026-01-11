@@ -3,10 +3,14 @@ set -euo pipefail
 
 descriptions=(
   "Run backend (gradle task runBackend)"
+  "Build and push backend docker image"
+  "Clone postgres db (src.env -> dst.env)"
 )
 
 commands=(
   "./gradlew runBackend"
+  "bash ./push-backend.sh"
+  "sh clone_pg.sh src.env dst.env postgres-local"
 )
 
 echo "Available commands:"

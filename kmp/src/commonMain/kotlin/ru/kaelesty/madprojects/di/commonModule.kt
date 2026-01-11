@@ -4,6 +4,7 @@ import org.koin.dsl.module
 import ru.kaelesty.madprojects.features.auth.sdk.authModule
 import ru.kaelesty.madprojects.features.checkin.sdk.checkInModule
 import ru.kaelesty.madprojects.features.profile.sdk.profileModule
+import ru.kaelesty.madprojects.features.project.sdk.projectModule
 import ru.kaelesty.madprojects.features.projectcreate.sdk.projectCreateModule
 import ru.kaelesty.madprojects.ktor.ktorModule
 
@@ -13,6 +14,7 @@ val commonModule = module {
         authModule,
         checkInModule,
         profileModule,
+        projectModule,
         projectCreateModule,
     )
 }
