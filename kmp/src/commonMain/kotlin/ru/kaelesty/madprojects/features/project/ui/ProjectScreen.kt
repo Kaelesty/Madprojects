@@ -25,6 +25,7 @@ import ru.kaelesty.madprojects.features.project.sdk.ProjectNavItem
 import ru.kaelesty.madprojects.ui.headers.ScreenHeader
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.ui.theme.Palette
+import ru.kaelesty.madprojects.utils.KLogger
 
 @Composable
 fun ProjectScreen(
@@ -56,13 +57,23 @@ fun ProjectScreen(
             ) {
                 NavigationBarItem(
                     selected = selectedTab == ProjectTab.Github,
-                    onClick = { selectedTab = ProjectTab.Github },
+                    onClick = {
+                        if (selectedTab != ProjectTab.Github) {
+                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Github" }
+                        }
+                        selectedTab = ProjectTab.Github
+                    },
                     icon = { Icon(imageVector = Icons.Default.Code, contentDescription = null) },
                     colors = navigationItemColors()
                 )
                 NavigationBarItem(
                     selected = selectedTab == ProjectTab.Sprints,
-                    onClick = { selectedTab = ProjectTab.Sprints },
+                    onClick = {
+                        if (selectedTab != ProjectTab.Sprints) {
+                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Sprints" }
+                        }
+                        selectedTab = ProjectTab.Sprints
+                    },
                     icon = { Icon(imageVector = Icons.Default.Event, contentDescription = null) },
                     colors = navigationItemColors()
                 )
@@ -84,3 +95,5 @@ private fun navigationItemColors() = NavigationBarItemDefaults.colors(
     disabledIconColor = Palette.FieldLabel.copy(alpha = 0.6f),
     disabledTextColor = Color.Transparent
 )
+
+private const val TAG = "ProjectScreen"

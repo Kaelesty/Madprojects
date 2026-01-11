@@ -13,6 +13,7 @@ import ru.kaelesty.madprojects.features.auth.sdk.AuthNavItem
 import ru.kaelesty.madprojects.features.checkin.sdk.CheckInNavItem
 import ru.kaelesty.madprojects.features.profile.sdk.ProfileNavItem
 import ru.kaelesty.madprojects.navigation.NavItem
+import ru.kaelesty.madprojects.utils.KLogger
 
 @Composable
 fun App(
@@ -29,6 +30,8 @@ fun App(
     if (authContext != null) {
         LaunchedEffect(isAuthenticated) {
             if (isAuthenticated == false) {
+                val from = navController.currentBackStackEntry?.destination?.route ?: "unknown"
+                KLogger.d(TAG) { "navigate: $from -> $authStart (isAuthenticated=$isAuthenticated)" }
                 navController.navigate(authStart) {
                     popUpTo(0) { inclusive = true }
                     launchSingleTop = true
@@ -36,6 +39,8 @@ fun App(
                 }
             }
             else {
+                val from = navController.currentBackStackEntry?.destination?.route ?: "unknown"
+                KLogger.d(TAG) { "navigate: $from -> ${ProfileNavItem.Route.Profile} (isAuthenticated=$isAuthenticated)" }
                 navController.navigate(ProfileNavItem.Route.Profile) {
                     popUpTo(0) { inclusive = true }
                     launchSingleTop = true
@@ -80,3 +85,4 @@ fun App(
 }
 
 private const val TRANSITION_MS = 800
+private const val TAG = "AppNav"

@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.project.ui.ProjectScreen
 import ru.kaelesty.madprojects.navigation.NavItem
+import ru.kaelesty.madprojects.utils.KLogger
 
 class ProjectNavItem(
     private val authContext: AuthContext,
@@ -15,7 +16,11 @@ class ProjectNavItem(
     class Navigator(
         private val navController: NavController,
     ) {
-        fun back() = navController.popBackStack()
+        fun back() {
+            val from = navController.currentBackStackEntry?.destination?.route ?: "unknown"
+            KLogger.d(TAG) { "navigate: $from -> back" }
+            navController.popBackStack()
+        }
     }
 
     override fun applyOn(builder: NavGraphBuilder, navController: NavController) = with(builder) {
@@ -38,3 +43,5 @@ class ProjectNavItem(
         @Serializable data class Project(val projectId: String) : Route
     }
 }
+
+private const val TAG = "ProjectNavItem"

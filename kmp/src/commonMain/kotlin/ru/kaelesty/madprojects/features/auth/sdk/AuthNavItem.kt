@@ -9,24 +9,40 @@ import ru.kaelesty.madprojects.feature.auth.ui.LoginScreen
 import ru.kaelesty.madprojects.features.auth.ui.RegisterScreen
 import ru.kaelesty.madprojects.features.profile.sdk.ProfileNavItem
 import ru.kaelesty.madprojects.navigation.NavItem
+import ru.kaelesty.madprojects.utils.KLogger
 
 class AuthNavItem: NavItem {
 
     class Navigator(
         private val navController: NavController,
     ) {
-        fun toRegister() = navController.navigate(Route.Register)
+        fun toRegister() {
+            logNavigate(Route.Register)
+            navController.navigate(Route.Register)
+        }
 
-        fun toLogin() = navController.navigate(Route.Login)
+        fun toLogin() {
+            logNavigate(Route.Login)
+            navController.navigate(Route.Login)
+        }
 
-        fun toHello() = navController.navigate(Route.Hello)
+        fun toHello() {
+            logNavigate(Route.Hello)
+            navController.navigate(Route.Hello)
+        }
 
         fun toProfile() {
+            logNavigate(ProfileNavItem.Route.Profile)
             navController.navigate(ProfileNavItem.Route.Profile) {
                 popUpTo(Route.Hello) { inclusive = true }
                 launchSingleTop = true
                 restoreState = false
             }
+        }
+
+        private fun logNavigate(target: Any) {
+            val from = navController.currentBackStackEntry?.destination?.route ?: "unknown"
+            KLogger.d(TAG) { "navigate: $from -> $target" }
         }
     }
 
@@ -51,4 +67,6 @@ class AuthNavItem: NavItem {
         @Serializable data object Register: Route
     }
 }
+
+private const val TAG = "AuthNavItem"
 
