@@ -9,8 +9,11 @@ import io.ktor.client.plugins.logging.DEFAULT
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.pingInterval
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.seconds
 import ru.kaelesty.madprojects.features.auth.sdk.UnauthorizedHandler
 import ru.kaelesty.madprojects.utils.KLogger
 
@@ -39,6 +42,9 @@ fun createKtorClient(
         install(Logging) {
             logger = Logger.DEFAULT
             level = LogLevel.INFO
+        }
+        install(WebSockets) {
+            pingInterval = 20.seconds
         }
         HttpResponseValidator {
             unauthorizedHandler?.configure(this)

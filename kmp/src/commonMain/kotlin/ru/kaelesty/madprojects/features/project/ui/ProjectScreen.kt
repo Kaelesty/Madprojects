@@ -7,11 +7,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,8 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.painterResource
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
@@ -44,6 +50,7 @@ fun ProjectScreen(
     navigator: ProjectNavItem.Navigator,
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(ProjectTab.Github) }
+    koinViewModel<ProjectSocketViewModel>(parameters = { parametersOf(projectId) })
 
     Surface(color = Palette.Background) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -58,6 +65,7 @@ fun ProjectScreen(
             ) {
                 when (selectedTab) {
                     ProjectTab.Github -> ProjectGithubScreen(projectId = projectId)
+                    ProjectTab.Messenger -> ProjectMessengerScreen(projectId = projectId)
                     ProjectTab.Sprints -> ProjectSprintsScreen()
                 }
             }
@@ -75,6 +83,19 @@ fun ProjectScreen(
                     },
                     icon = {
                         ProjectNavIcon(painter = painterResource(Res.drawable.github))
+                    },
+                    colors = navigationItemColors()
+                )
+                NavigationBarItem(
+                    selected = selectedTab == ProjectTab.Messenger,
+                    onClick = {
+                        if (selectedTab != ProjectTab.Messenger) {
+                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Messenger" }
+                        }
+                        selectedTab = ProjectTab.Messenger
+                    },
+                    icon = {
+                        ProjectNavIcon(imageVector = Icons.Outlined.Chat)
                     },
                     colors = navigationItemColors()
                 )
@@ -98,23 +119,36 @@ fun ProjectScreen(
 
 private enum class ProjectTab {
     Github,
+    Messenger,
     Sprints,
 }
 
 @Composable
 private fun ProjectNavIcon(painter: Painter) {
     Box(
-        modifier = Modifier
-            .size(44.dp)
-            .padding(vertical = 4.dp),
+        modifier = Modifier.padding(vertical = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Image(
             painter = painter,
             contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.size(22.dp),
             contentScale = ContentScale.Fit,
             colorFilter = ColorFilter.tint(LocalContentColor.current)
+        )
+    }
+}
+
+@Composable
+private fun ProjectNavIcon(imageVector: ImageVector) {
+    Box(
+        modifier = Modifier.padding(vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = null,
+            modifier = Modifier.size(22.dp)
         )
     }
 }
