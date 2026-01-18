@@ -10,7 +10,7 @@ descriptions=(
 commands=(
   "./gradlew runBackend"
   "bash ./push-backend.sh"
-  "sh clone_pg.sh src.env dst.env postgres-local"
+  "bash ./clone_pg.sh ./src.env ./dst.env postgres-local"
 )
 
 echo "Available commands:"

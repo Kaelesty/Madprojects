@@ -1,17 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 /path/to/src.env /path/to/dst.env <postgres_container_name_or_id>"
   echo "Example: $0 ./src.env ./dst.env postgres-db"
   exit 1
 fi
 
-SRC_ENV="$1"
-DST_ENV="$2"
+resolve_env_path() {
+  local path="$1"
+  if [[ "$path" != */* && -f "$path" ]]; then
+    echo "./$path"
+    return
+  fi
+  if [[ -f "$path" ]]; then
+    echo "$path"
+    return
+  fi
+  if [[ -f "$SCRIPT_DIR/$path" ]]; then
+    echo "$SCRIPT_DIR/$path"
+    return
+  fi
+  echo "$path"
+}
+
+SRC_ENV="$(resolve_env_path "$1")"
+DST_ENV="$(resolve_env_path "$2")"
 PG_CONTAINER="$3"
 
 command -v docker >/dev/null || { echo "docker not found"; exit 1; }
+
+if [[ ! -f "$SRC_ENV" ]]; then
+  echo "Source env file not found: $SRC_ENV"
+  exit 1
+fi
+
+if [[ ! -f "$DST_ENV" ]]; then
+  echo "Target env file not found: $DST_ENV"
+  exit 1
+fi
 
 # Load source env
 # shellcheck disable=SC1090
