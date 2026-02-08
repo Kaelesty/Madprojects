@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.ViewKanban
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -50,6 +51,7 @@ fun ProjectScreen(
     navigator: ProjectNavItem.Navigator,
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(ProjectTab.Github) }
+    var pendingChatId by rememberSaveable { mutableStateOf<Int?>(null) }
     koinViewModel<ProjectSocketViewModel>(parameters = { parametersOf(projectId) })
 
     Surface(color = Palette.Background) {
@@ -65,8 +67,22 @@ fun ProjectScreen(
             ) {
                 when (selectedTab) {
                     ProjectTab.Github -> ProjectGithubScreen(projectId = projectId)
-                    ProjectTab.Messenger -> ProjectMessengerScreen(projectId = projectId)
-                    ProjectTab.Sprints -> ProjectSprintsScreen()
+                    ProjectTab.Kanban -> ProjectKanbanScreen(
+                        projectId = projectId,
+                        onOpenChat = { chatId ->
+                            if (selectedTab != ProjectTab.Messenger) {
+                                KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Messenger (chatId=$chatId)" }
+                            }
+                            pendingChatId = chatId
+                            selectedTab = ProjectTab.Messenger
+                        }
+                    )
+                    ProjectTab.Messenger -> ProjectMessengerScreen(
+                        projectId = projectId,
+                        initialChatId = pendingChatId,
+                        onChatConsumed = { pendingChatId = null }
+                    )
+                    ProjectTab.Sprints -> ProjectSprintsScreen(projectId = projectId)
                 }
             }
             NavigationBar(
@@ -83,6 +99,19 @@ fun ProjectScreen(
                     },
                     icon = {
                         ProjectNavIcon(painter = painterResource(Res.drawable.github))
+                    },
+                    colors = navigationItemColors()
+                )
+                NavigationBarItem(
+                    selected = selectedTab == ProjectTab.Kanban,
+                    onClick = {
+                        if (selectedTab != ProjectTab.Kanban) {
+                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Kanban" }
+                        }
+                        selectedTab = ProjectTab.Kanban
+                    },
+                    icon = {
+                        ProjectNavIcon(imageVector = Icons.Outlined.ViewKanban)
                     },
                     colors = navigationItemColors()
                 )
@@ -119,6 +148,7 @@ fun ProjectScreen(
 
 private enum class ProjectTab {
     Github,
+    Kanban,
     Messenger,
     Sprints,
 }

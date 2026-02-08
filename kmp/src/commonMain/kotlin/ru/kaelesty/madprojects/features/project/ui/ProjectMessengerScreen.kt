@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,12 +56,24 @@ import ru.kaelesty.madprojects.ui.theme.Roboto
 @Composable
 fun ProjectMessengerScreen(
     projectId: String,
+    initialChatId: Int? = null,
+    onChatConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val vm = koinViewModel<ProjectMessengerViewModel>(parameters = { parametersOf(projectId) })
     val state by vm.chatsState.collectAsState()
     val createChatState by vm.createChatDialogState.collectAsState()
     val (selectedChat, setSelectedChat) = remember { mutableStateOf<ProjectMessengerViewModel.ChatItem?>(null) }
+
+    LaunchedEffect(initialChatId, state) {
+        val chatId = initialChatId ?: return@LaunchedEffect
+        val chats = (state as? ProjectMessengerViewModel.ChatsState.Loaded)?.chats ?: return@LaunchedEffect
+        val target = chats.firstOrNull { it.id == chatId } ?: return@LaunchedEffect
+        if (selectedChat?.id != chatId) {
+            setSelectedChat(target)
+        }
+        onChatConsumed()
+    }
 
     if (createChatState.isOpen) {
         CreateChatDialog(
