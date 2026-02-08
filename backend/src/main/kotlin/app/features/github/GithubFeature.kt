@@ -1,6 +1,8 @@
 package app.features.github
 
+import app.LogManager
 import app.GithubTokenUtil
+import app.parseGithubOauthTokens
 import com.auth0.jwt.JWTVerifier
 import domain.BranchesRepo
 import domain.GithubTokensRepo
@@ -11,8 +13,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.forms.submitForm
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.parameters
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
@@ -21,7 +27,6 @@ import io.ktor.server.routing.RoutingContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import ru.kaelesty.madprojects.api.github.VerifyResponse
-import shared_domain.entities.GithubTokens
 import shared_domain.entities.GithubUser
 
 interface GithubFeature {
@@ -48,17 +53,17 @@ class GithubFeatureImpl(
     private val config: app.config.Config
 ): GithubFeature {
 
-    private val githubAuthLink =
-        "https://github.com/login/oauth/access_token?client_id=${config.github.clientId}&client_secret=${config.github.clientSecret}"
+    private val githubAuthLink = "https://github.com/login/oauth/access_token"
     private val githubRepoLink = "https://api.github.com/repos"
 
     override suspend fun proceedGithubApiCallback(rc: RoutingContext) {
         with(rc) {
 
-            val githubCode = call.parameters["code"] ?: call.respond(
-                HttpStatusCode.Unauthorized,
-                "Failed to parse github code"
-            )
+            val githubCode = call.parameters["code"]
+            if (githubCode == null) {
+                call.respond(HttpStatusCode.Unauthorized, "Failed to parse github code")
+                return
+            }
             val userId = call.parameters["state"]
                 ?.let {
                     jwt.verify(it).getClaim("userId").asString()
@@ -70,38 +75,43 @@ class GithubFeatureImpl(
 
 
 
-            val response = httpClient.get("$githubAuthLink&code=$githubCode")
-            if (response.status == HttpStatusCode.OK) {
-                val body = try {
-                    response.body<GithubTokens>()
-                } catch (e: Exception) {
-                    e
-                    call.respond(HttpStatusCode.SeeOther, "Bad code")
-                    return
+            val response = httpClient.submitForm(
+                url = githubAuthLink,
+                formParameters = parameters {
+                    append("client_id", config.github.clientId)
+                    append("client_secret", config.github.clientSecret)
+                    append("code", githubCode)
                 }
+            ) {
+                headers.append(HttpHeaders.Accept, "application/json")
+            }
+            val payload = parseGithubOauthTokens(response.bodyAsText())
+            val accessToken = payload?.access_token
+            if (response.status == HttpStatusCode.OK && !accessToken.isNullOrBlank()) {
+                val refreshToken = payload?.refresh_token.orEmpty()
 
                 val metaResponse = httpClient.get("https://api.github.com/user") {
-                    header("Authorization", "Bearer ${body.access_token}")
+                    header("Authorization", "Bearer $accessToken")
                 }
                 if (metaResponse.status != HttpStatusCode.OK) {
                     call.respond(
                         HttpStatusCode.FailedDependency,
                         "Failed to load user meta via secondary request"
                     )
+                    return
                 }
 
                 try {
                     val githubUser = metaResponse.body<GithubUser>()
                     githubTokensRepo.save(
-                        access = body.access_token,
-                        refresh = body.refresh_token,
+                        access = accessToken,
+                        refresh = refreshToken,
                         userId = userId,
                         githubId = githubUser.id,
                         avatar = githubUser.avatarUrl,
                         profileLink = githubUser.profileLink
                     )
                 } catch (e: Exception) {
-                    e
                     call.respond(
                         HttpStatusCode.FailedDependency,
                         "Failed to parse user meta from secondary request"
@@ -111,7 +121,13 @@ class GithubFeatureImpl(
 
 
                 call.respond(HttpStatusCode.OK, "Tokens are recorded")
-            } else call.respond(HttpStatusCode.Unauthorized, "Failed to get tokens from code")
+            } else {
+                LogManager.emitError(
+                    "GitHub code exchange failed for userId=$userId, status=${response.status.value}, " +
+                        "error=${payload?.error}, description=${payload?.error_description}"
+                )
+                call.respond(HttpStatusCode.Unauthorized, "Failed to get tokens from code")
+            }
         }
     }
 
@@ -128,16 +144,22 @@ class GithubFeatureImpl(
                 call.respond(HttpStatusCode.Unauthorized, "Failed to parse jwt")
                 return
             }
-            val githubJwt = githubTokensRepo.getAccessToken(userId)
+            val githubJwt = tokenUtil.getGithubAccessToken(userId)
 
             if (githubJwt == null) {
                 call.respond(HttpStatusCode.TooEarly)
                 return
             }
 
-            val parts = link.split("/").reversed()
-            val response = httpClient.get("$githubRepoLink/${parts[1]}/${parts[0]}") {
-                header("Authentication", "Bearer $githubJwt")
+            val parts = link.trimEnd('/').split("/")
+            if (parts.size < 2) {
+                call.respond(HttpStatusCode.BadRequest, "Invalid repolink")
+                return
+            }
+            val owner = parts[parts.size - 2]
+            val repo = parts[parts.size - 1]
+            val response = httpClient.get("$githubRepoLink/$owner/$repo") {
+                header("Authorization", "Bearer $githubJwt")
             }
             if (response.status != HttpStatusCode.OK) {
                 call.respond(HttpStatusCode.NotFound, "Invalid repolink")

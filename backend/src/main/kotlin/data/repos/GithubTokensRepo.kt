@@ -54,6 +54,7 @@ class GithubTokensRepoImpl(
     override suspend fun getAccessToken(userId: String): Token? {
         val token = githubService.getAccessToken(userId)
         if (token == null) return null
+        if (token.first.isBlank()) return null
         if (token.second < System.currentTimeMillis()) {
             return Token.Expired
         }
@@ -63,6 +64,7 @@ class GithubTokensRepoImpl(
     override suspend fun getRefreshToken(userId: String): Token? {
         val token = githubService.getRefreshToken(userId)
         if (token == null) return null
+        if (token.first.isBlank()) return null
         if (token.second < System.currentTimeMillis()) {
             return Token.Expired
         }

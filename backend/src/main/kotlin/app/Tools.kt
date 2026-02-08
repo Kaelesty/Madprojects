@@ -2,11 +2,11 @@ package app
 
 import domain.GithubTokensRepo
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
+import io.ktor.client.request.forms.submitForm
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import shared_domain.entities.GithubTokens
+import io.ktor.http.parameters
 
 class GithubTokenUtil(
     private val githubTokensRepo: GithubTokensRepo,
@@ -22,26 +22,36 @@ class GithubTokenUtil(
 
         githubTokensRepo.getRefreshToken(userId)?.let { refresh ->
             if (refresh is GithubTokensRepo.Token.Expired) return null
+            val refreshToken = refresh as? GithubTokensRepo.Token.Alive ?: return null
             val gConfig = config.github
-            val response = httpClient.get("https://github.com/login/oauth/access_token") {
-                parameter("client_id", gConfig.clientId)
-                parameter("client_secret", gConfig.clientSecret)
-                parameter("grant_type", "refresh_token")
-                parameter("refresh_token", (refresh as GithubTokensRepo.Token.Alive).token)
+            val response = httpClient.submitForm(
+                url = "https://github.com/login/oauth/access_token",
+                formParameters = parameters {
+                    append("client_id", gConfig.clientId)
+                    append("client_secret", gConfig.clientSecret)
+                    append("grant_type", "refresh_token")
+                    append("refresh_token", refreshToken.token)
+                }
+            ) {
+                headers.append(HttpHeaders.Accept, "application/json")
             }
-            if (response.status == HttpStatusCode.OK) {
-                val str = response.body<String>()
-                str.toString()
-                val body = response.body<GithubTokens>()
-                //val (accessToken, refreshToken) = extractTokens(body)
 
-                githubTokensRepo.updateTokens(
-                    access = body.access_token,
-                    refresh = body.refresh_token,
-                    userId = userId,
+            val payload = parseGithubOauthTokens(response.bodyAsText())
+            if (response.status != HttpStatusCode.OK || payload?.access_token.isNullOrBlank()) {
+                LogManager.emitError(
+                    "GitHub refresh failed for userId=$userId, status=${response.status.value}, " +
+                        "error=${payload?.error}, description=${payload?.error_description}"
                 )
-                return body.access_token
-            } else return null
+                return null
+            }
+            val access = payload.access_token ?: return null
+
+            githubTokensRepo.updateTokens(
+                access = access,
+                refresh = payload.refresh_token ?: refreshToken.token,
+                userId = userId,
+            )
+            return access
         }
         return null
     }
