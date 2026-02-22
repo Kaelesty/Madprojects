@@ -105,6 +105,7 @@ dependencies {
 }
 
 val generateKtorConfig by tasks.registering {
+    inputs.property("kmp.baseUrl", kmpBaseUrlProvider)
     outputs.dir(generatedKtorConfigDir)
     doLast {
         val baseUrl = kmpBaseUrlProvider.get()

@@ -53,6 +53,7 @@ object LogManager {
     }
 
     fun emitError(message: String) {
+        System.err.println("LogManager ERROR: $message")
         scope.launch {
             val newValue = storage.value
                 .toMutableList()

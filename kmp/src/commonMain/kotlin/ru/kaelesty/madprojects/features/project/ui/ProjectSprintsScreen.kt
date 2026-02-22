@@ -43,10 +43,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import domain.activity.Activity
+import domain.activity.ActivityType
+import domain.profile.SharedProfile
 import domain.sprints.ProfileSprint
 import domain.sprints.SprintMeta
 import domain.sprints.SprintView
@@ -75,6 +79,8 @@ fun ProjectSprintsScreen(
         parameters = { parametersOf(projectId) }
     )
     val listState by listVm.state.collectAsState()
+    val activityState by listVm.activityState.collectAsState()
+    val uriHandler = LocalUriHandler.current
     var page by remember { mutableStateOf<SprintsPage>(SprintsPage.List) }
 
     LaunchedEffect(page) {
@@ -92,8 +98,10 @@ fun ProjectSprintsScreen(
         when (val current = page) {
             SprintsPage.List -> SprintsListContent(
                 state = listState,
+                activityState = activityState,
                 onCreate = { page = SprintsPage.Create },
                 onOpenSprint = { sprintId -> page = SprintsPage.Details(sprintId) },
+                onOpenRepo = uriHandler::openUri,
                 onRetry = listVm::load
             )
             is SprintsPage.Details -> ProjectSprintDetailsScreen(
@@ -129,8 +137,10 @@ private sealed interface SprintsPage {
 @Composable
 private fun SprintsListContent(
     state: ProjectSprintsViewModel.State,
+    activityState: ProjectSprintsViewModel.ActivityState,
     onCreate: () -> Unit,
     onOpenSprint: (String) -> Unit,
+    onOpenRepo: (String) -> Unit,
     onRetry: () -> Unit,
 ) {
     Column(
@@ -140,6 +150,13 @@ private fun SprintsListContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        ActivityFeedCard(
+            state = activityState,
+            onRetry = onRetry,
+            onOpenSprint = onOpenSprint,
+            onOpenRepo = onOpenRepo
+        )
+
         SectionHeader(
             title = StringResources.ProjectSprintsTitle,
             actionIcon = Icons.Filled.Add,
@@ -197,6 +214,115 @@ private fun SprintsListContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ActivityFeedCard(
+    state: ProjectSprintsViewModel.ActivityState,
+    onRetry: () -> Unit,
+    onOpenSprint: (String) -> Unit,
+    onOpenRepo: (String) -> Unit,
+) {
+    ProfileCard {
+        SectionTitle(text = StringResources.ProjectActivityFeedTitle)
+        Spacer(Modifier.height(12.dp))
+        when (state) {
+            ProjectSprintsViewModel.ActivityState.Loading -> {
+                RowWithLoader(text = StringResources.ProjectActivityFeedLoading)
+            }
+            is ProjectSprintsViewModel.ActivityState.Error -> {
+                Text(
+                    text = state.message ?: StringResources.ProjectActivityFeedError,
+                    color = MaterialTheme.colorScheme.error,
+                    fontFamily = Roboto,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                PrimaryActionButton(
+                    text = StringResources.RetryButton,
+                    onClick = onRetry,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            is ProjectSprintsViewModel.ActivityState.Loaded -> {
+                val activities = state.response.activities.asReversed()
+                if (activities.isEmpty()) {
+                    Text(
+                        text = StringResources.ProjectActivityFeedEmpty,
+                        color = Palette.FieldLabel,
+                        fontFamily = Roboto,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                        activities.forEachIndexed { index, activity ->
+                            val actor = activity.actorId?.let(state.response.actors::get)
+                            val formatted = formatProjectActivity(activity = activity, actor = actor)
+                            ActivityFeedRow(
+                                formatted = formatted,
+                                onOpenSprint = onOpenSprint,
+                                onOpenRepo = onOpenRepo,
+                            )
+                            if (index < activities.lastIndex) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .background(Palette.FieldBorder.copy(alpha = 0.55f))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class FormattedProjectActivity(
+    val timestamp: String,
+    val message: String,
+    val sprintId: String? = null,
+    val repoUrl: String? = null,
+)
+
+@Composable
+private fun ActivityFeedRow(
+    formatted: FormattedProjectActivity,
+    onOpenSprint: (String) -> Unit,
+    onOpenRepo: (String) -> Unit,
+) {
+    val clickAction = when {
+        formatted.sprintId != null -> ({ onOpenSprint(formatted.sprintId) })
+        formatted.repoUrl != null -> ({ onOpenRepo(formatted.repoUrl) })
+        else -> null
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (clickAction != null) Modifier.clickable(onClick = clickAction) else Modifier)
+            .padding(vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = formatted.timestamp,
+            color = Palette.FieldLabel,
+            fontFamily = Roboto,
+            fontSize = 11.sp
+        )
+        Text(
+            text = formatted.message,
+            color = Palette.OnCard,
+            fontFamily = Roboto,
+            fontSize = 13.sp,
+            lineHeight = 17.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -934,4 +1060,78 @@ private fun parseHexColor(value: String, fallback: Color): Color {
     val cleaned = value.removePrefix("#").trim()
     val parsed = cleaned.toLongOrNull(16) ?: return fallback
     return Color((0xFF000000 or parsed).toInt())
+}
+
+@OptIn(kotlin.time.ExperimentalTime::class)
+private fun formatActivityTimestamp(millis: Long): String {
+    val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+    return buildString {
+        append(dt.date.dayOfMonth.toString().padStart(2, '0'))
+        append('.')
+        append(dt.date.monthNumber.toString().padStart(2, '0'))
+        append('.')
+        append(dt.date.year)
+        append(' ')
+        append(dt.time.hour.toString().padStart(2, '0'))
+        append(':')
+        append(dt.time.minute.toString().padStart(2, '0'))
+    }
+}
+
+private fun formatActorName(actor: SharedProfile?): String {
+    if (actor == null) return StringResources.ProjectActivityFeedActorUnknown
+    return listOf(actor.lastName, actor.firstName, actor.secondName)
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+        .ifBlank { StringResources.ProjectActivityFeedActorUnknown }
+}
+
+private fun formatProjectActivity(
+    activity: Activity,
+    actor: SharedProfile?,
+): FormattedProjectActivity {
+    val actorName = formatActorName(actor)
+    val timestamp = formatActivityTimestamp(activity.timeMillis)
+    return when (activity.type) {
+        ActivityType.SprintStart -> FormattedProjectActivity(
+            timestamp = timestamp,
+            message = "$actorName начал спринт ${activity.targetTitle}",
+            sprintId = activity.targetId
+        )
+        ActivityType.SprintFinish -> FormattedProjectActivity(
+            timestamp = timestamp,
+            message = "$actorName завершил спринт ${activity.targetTitle}",
+            sprintId = activity.targetId
+        )
+        ActivityType.RepoBind -> FormattedProjectActivity(
+            timestamp = timestamp,
+            message = "$actorName привязал репозиторий ${activity.targetTitle}",
+            repoUrl = activity.targetTitle
+        )
+        ActivityType.RepoUnbind -> FormattedProjectActivity(
+            timestamp = timestamp,
+            message = "$actorName отвязал репозиторий ${activity.targetTitle}",
+            repoUrl = activity.targetTitle
+        )
+        ActivityType.MemberAdd -> FormattedProjectActivity(
+            timestamp = timestamp,
+            message = "${activity.targetTitle} присоединился к проекту"
+        )
+        ActivityType.MemberRemove -> FormattedProjectActivity(
+            timestamp = timestamp,
+            message = "$actorName удалил участника ${activity.targetTitle} из проекта"
+        )
+        ActivityType.KardMove -> FormattedProjectActivity(
+            timestamp = timestamp,
+            message = buildString {
+                append(actorName)
+                append(" переместил карточку ")
+                append(activity.targetTitle)
+                activity.secondaryTargetTitle?.takeIf { it.isNotBlank() }?.let {
+                    append(" в столбец ")
+                    append(it)
+                }
+            }
+        )
+    }
 }

@@ -52,8 +52,14 @@ class MessengerSocketClient(
     private var connectJob: Job? = null
     private var activeProjectId: Int? = null
     private var session: DefaultClientWebSocketSession? = null
+    private var sentIntentsCount = 0
+    private var receivedFramesCount = 0
+    private var receivedMessengerActionsCount = 0
 
     override fun connect(projectId: Int) {
+        KLogger.d(TAG) {
+            "connect requested: projectId=$projectId activeProjectId=$activeProjectId jobActive=${connectJob?.isActive == true}"
+        }
         if (activeProjectId == projectId && connectJob?.isActive == true) {
             KLogger.d(TAG) { "connect skipped: already active projectId=$projectId" }
             return
@@ -66,14 +72,14 @@ class MessengerSocketClient(
     }
 
     override fun disconnect() {
-        KLogger.d(TAG) { "disconnect requested" }
+        KLogger.d(TAG) { "disconnect requested: activeProjectId=$activeProjectId" }
         connectJob?.cancel()
         connectJob = null
         activeProjectId = null
         scope.launch {
             closeSession("client disconnect")
         }
-        _state.value = MessengerSocket.ConnectionState.Idle
+        setState(MessengerSocket.ConnectionState.Idle, "disconnect()")
     }
 
     override suspend fun requestChatsList() {
@@ -107,14 +113,15 @@ class MessengerSocketClient(
     }
 
     private suspend fun connectionLoop(projectId: Int) {
+        KLogger.d(TAG) { "connectionLoop start: projectId=$projectId baseUrl=$baseUrl" }
         var attempt = 0
         var delayMs = RECONNECT_DELAY_MS
         while (currentCoroutineContext().isActive) {
             attempt += 1
-            _state.value = MessengerSocket.ConnectionState.Connecting(attempt)
+            setState(MessengerSocket.ConnectionState.Connecting(attempt), "attempt=$attempt")
             val token = authContext.getAccessToken()
             if (token.isNullOrBlank()) {
-                _state.value = MessengerSocket.ConnectionState.AuthRequired
+                setState(MessengerSocket.ConnectionState.AuthRequired, "no access token")
                 KLogger.w(TAG) { "connect skipped: no access token" }
                 delay(AUTH_RETRY_DELAY_MS)
                 continue
@@ -122,31 +129,36 @@ class MessengerSocketClient(
             var wsSession: DefaultClientWebSocketSession? = null
             try {
                 val url = "${toWebSocketBaseUrl(baseUrl)}$PROJECT_PATH"
-                KLogger.d(TAG) { "connecting: url=$url attempt=$attempt" }
+                KLogger.d(TAG) { "connecting: url=$url attempt=$attempt tokenLength=${token.length} projectId=$projectId" }
                 wsSession = client.webSocketSession(urlString = url)
                 session = wsSession
-                _state.value = MessengerSocket.ConnectionState.Connected
+                KLogger.i(TAG) { "websocket session opened: attempt=$attempt projectId=$projectId" }
+                setState(MessengerSocket.ConnectionState.Connected, "session opened")
 
                 sendDirect(wsSession, Intent.Authorize(token))
                 sendDirect(wsSession, Intent.Messenger.Start(projectId))
-                _state.value = MessengerSocket.ConnectionState.Authorized(projectId)
+                setState(MessengerSocket.ConnectionState.Authorized(projectId), "authorize+messenger.start sent")
                 delayMs = RECONNECT_DELAY_MS
 
                 coroutineScope {
+                    KLogger.d(TAG) { "connection coroutines started: projectId=$projectId attempt=$attempt" }
                     val sender = launch { sendLoop(wsSession) }
                     val receiver = launch { receiveLoop(wsSession) }
                     receiver.join()
+                    KLogger.w(TAG) { "receiveLoop finished: projectId=$projectId attempt=$attempt; cancelling sender" }
                     sender.cancelAndJoin()
+                    KLogger.d(TAG) { "connection coroutines finished: projectId=$projectId attempt=$attempt" }
                 }
             } catch (e: CancellationException) {
+                KLogger.d(TAG) { "connectionLoop cancelled: projectId=$projectId attempt=$attempt" }
                 throw e
             } catch (e: Exception) {
                 KLogger.e(TAG, e) { "socket failure" }
-                _state.value = MessengerSocket.ConnectionState.Failed(e.message ?: "unknown")
+                setState(MessengerSocket.ConnectionState.Failed(e.message ?: "unknown"), "exception")
             } finally {
                 closeSession("connection closed", wsSession)
                 if (currentCoroutineContext().isActive) {
-                    _state.value = MessengerSocket.ConnectionState.Disconnected
+                    setState(MessengerSocket.ConnectionState.Disconnected, "finally")
                 }
             }
             if (!currentCoroutineContext().isActive) break
@@ -154,9 +166,11 @@ class MessengerSocketClient(
             delay(delayMs)
             delayMs = (delayMs * 2).coerceAtMost(MAX_RECONNECT_DELAY_MS)
         }
+        KLogger.d(TAG) { "connectionLoop end: projectId=$projectId" }
     }
 
     private suspend fun sendLoop(wsSession: DefaultClientWebSocketSession) {
+        KLogger.d(TAG) { "sendLoop started" }
         outgoing.collect { intent ->
             runCatching {
                 sendDirect(wsSession, intent)
@@ -168,45 +182,72 @@ class MessengerSocketClient(
     }
 
     private suspend fun receiveLoop(wsSession: DefaultClientWebSocketSession) {
+        KLogger.d(TAG) { "receiveLoop started" }
         for (frame in wsSession.incoming) {
-            if (frame !is Frame.Text) continue
+            if (frame !is Frame.Text) {
+                KLogger.d(TAG) { "incoming non-text frame ignored: ${frame::class.simpleName}" }
+                continue
+            }
             val text = frame.readText()
+            receivedFramesCount += 1
+            KLogger.d(TAG) {
+                "incoming text frame #$receivedFramesCount: type=${extractType(text)} length=${text.length}"
+            }
             val actionResult = runCatching { socketJson.decodeFromString<Action>(text) }
             if (actionResult.isFailure) {
                 val error = actionResult.exceptionOrNull()
-                KLogger.w(TAG) { "failed to decode action: ${error?.message}" }
+                KLogger.w(TAG) {
+                    "failed to decode action: ${error?.message}; rawType=${extractType(text)} rawSnippet=${text.take(200)}"
+                }
                 continue
             }
             val action = actionResult.getOrThrow()
+            KLogger.d(TAG) { "action decoded: ${describeAction(action)}" }
             when (action) {
                 is Action.Unauthorized -> {
                     KLogger.w(TAG) { "received unauthorized action" }
                     authContext.onUnauthorizedResponse()
                     closeSession("unauthorized")
                 }
-                is Action.Messenger -> _actions.emit(action)
+                is Action.Messenger -> {
+                    receivedMessengerActionsCount += 1
+                    KLogger.i(TAG) { "messenger action #$receivedMessengerActionsCount: ${describeMessengerAction(action)}" }
+                    _actions.emit(action)
+                }
                 else -> Unit
             }
         }
+        KLogger.w(TAG) { "receiveLoop ended: incoming channel completed" }
     }
 
     private suspend fun sendIntent(intent: Intent) {
         if (_state.value !is MessengerSocket.ConnectionState.Authorized) {
-            KLogger.w(TAG) { "send dropped: not connected (${intent::class.simpleName})" }
+            KLogger.w(TAG) { "send dropped: not connected state=${describeState(_state.value)} intent=${describeIntent(intent)}" }
             return
         }
-        if (!outgoing.tryEmit(intent)) {
-            KLogger.w(TAG) { "send dropped: buffer full (${intent::class.simpleName})" }
+        if (outgoing.tryEmit(intent)) {
+            KLogger.d(TAG) { "intent queued: ${describeIntent(intent)}" }
+        } else {
+            KLogger.w(TAG) { "send dropped: buffer full intent=${describeIntent(intent)}" }
         }
     }
 
     private suspend fun sendDirect(wsSession: DefaultClientWebSocketSession, intent: Intent) {
         val payload = socketJson.encodeToString(intent)
+        sentIntentsCount += 1
+        KLogger.d(TAG) {
+            "sendDirect #$sentIntentsCount: ${describeIntent(intent)} type=${extractType(payload)} payloadLength=${payload.length}"
+        }
         wsSession.send(Frame.Text(payload))
     }
 
     private suspend fun closeSession(reason: String, target: DefaultClientWebSocketSession? = session) {
+        if (target == null) {
+            KLogger.d(TAG) { "closeSession skipped: no session ($reason)" }
+            return
+        }
         target?.let { current ->
+            KLogger.d(TAG) { "closeSession: reason=$reason isCurrent=${session === current}" }
             runCatching {
                 current.close()
             }.onFailure {
@@ -220,6 +261,64 @@ class MessengerSocketClient(
 
     private fun logMissingProject(operation: String) {
         KLogger.w(TAG) { "$operation skipped: projectId not set" }
+    }
+
+    private fun setState(newState: MessengerSocket.ConnectionState, reason: String) {
+        val oldState = _state.value
+        _state.value = newState
+        KLogger.d(TAG) { "state: ${describeState(oldState)} -> ${describeState(newState)} ($reason)" }
+    }
+
+    private fun describeAction(action: Action): String = when (action) {
+        is Action.Unauthorized -> "Unauthorized"
+        is Action.Messenger -> "Messenger.${describeMessengerAction(action)}"
+        else -> action::class.simpleName ?: "UnknownAction"
+    }
+
+    private fun describeMessengerAction(action: Action.Messenger): String = when (action) {
+        is Action.Messenger.SendChatsList -> "SendChatsList(chats=${action.chats.size}, senders=${action.senders.size})"
+        is Action.Messenger.NewChat -> "NewChat(id=${action.chat.id})"
+        is Action.Messenger.NewMessage -> "NewMessage(chatId=${action.chatId}, messageId=${action.message.id})"
+        is Action.Messenger.UpdateChatUnreadCount -> "UpdateChatUnreadCount(chatId=${action.chatId}, count=${action.count})"
+        is Action.Messenger.SendChatMessages -> {
+            "SendChatMessages(chatId=${action.chatId}, read=${action.readMessages.size}, unread=${action.unreadMessages.size})"
+        }
+        is Action.Messenger.MessageReadRecorded -> {
+            "MessageReadRecorded(chatId=${action.chatId}, messageId=${action.messageId})"
+        }
+    }
+
+    private fun describeIntent(intent: Intent): String = when (intent) {
+        is Intent.Authorize -> "Authorize(tokenLength=${intent.jwt.length})"
+        is Intent.Messenger.Start -> "Messenger.Start(projectId=${intent.projectId})"
+        is Intent.Messenger.RequestChatsList -> "Messenger.RequestChatsList(projectId=${intent.projectId})"
+        is Intent.Messenger.RequestChatMessages -> "Messenger.RequestChatMessages(projectId=${intent.projectId}, chatId=${intent.chatId})"
+        is Intent.Messenger.SendMessage -> "Messenger.SendMessage(projectId=${intent.projectId}, chatId=${intent.chatId}, textLength=${intent.message.length})"
+        is Intent.Messenger.CreateChat -> "Messenger.CreateChat(projectId=${intent.projectId}, type=${intent.chatType}, title=${intent.chatTitle})"
+        is Intent.Messenger.ReadMessage -> "Messenger.ReadMessage(projectId=${intent.projectId}, chatId=${intent.chatId}, messageId=${intent.messageId})"
+        is Intent.Messenger.ReadMessagesBefore -> {
+            "Messenger.ReadMessagesBefore(projectId=${intent.projectId}, chatId=${intent.chatId}, messageId=${intent.messageId})"
+        }
+        else -> intent::class.simpleName ?: "UnknownIntent"
+    }
+
+    private fun describeState(state: MessengerSocket.ConnectionState): String = when (state) {
+        is MessengerSocket.ConnectionState.Authorized -> "Authorized(projectId=${state.projectId})"
+        is MessengerSocket.ConnectionState.Connecting -> "Connecting(attempt=${state.attempt})"
+        is MessengerSocket.ConnectionState.Failed -> "Failed(reason=${state.reason})"
+        MessengerSocket.ConnectionState.AuthRequired -> "AuthRequired"
+        MessengerSocket.ConnectionState.Connected -> "Connected"
+        MessengerSocket.ConnectionState.Disconnected -> "Disconnected"
+        MessengerSocket.ConnectionState.Idle -> "Idle"
+    }
+
+    private fun extractType(raw: String): String {
+        val key = "\"type\":\""
+        val start = raw.indexOf(key)
+        if (start == -1) return "unknown"
+        val valueStart = start + key.length
+        val end = raw.indexOf('"', valueStart)
+        return if (end == -1) "unknown" else raw.substring(valueStart, end)
     }
 
     private fun toWebSocketBaseUrl(url: String): String {

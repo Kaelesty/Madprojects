@@ -179,27 +179,44 @@ class GithubFeatureImpl(
             val principal = call.principal<JWTPrincipal>()
             val userId = principal!!.payload.getClaim("userId").asString()
             val projectId = call.parameters["projectId"]
+            LogManager.emitError(
+                "GithubFeature.getProjectRepoBranches request: userId=$userId, projectId=$projectId"
+            )
             if (projectId == null) {
+                LogManager.emitError("GithubFeature.getProjectRepoBranches bad parameters: userId=$userId")
                 call.respond(HttpStatusCode.BadRequest, "Bad parameters")
                 return
             }
             if (userId == null) {
+                LogManager.emitError("GithubFeature.getProjectRepoBranches failed to parse jwt userId")
                 call.respond(HttpStatusCode.Unauthorized, "Failed to parse jwt")
                 return
             }
             val githubJwt = tokenUtil.getGithubAccessToken(userId)
 
             if (githubJwt == null) {
+                LogManager.emitError(
+                    "GithubFeature.getProjectRepoBranches github token unavailable -> 425: userId=$userId, projectId=$projectId"
+                )
                 call.respond(HttpStatusCode.TooEarly)
                 return
             }
+            LogManager.emitError(
+                "GithubFeature.getProjectRepoBranches github token resolved: userId=$userId, projectId=$projectId, tokenLength=${githubJwt.length}"
+            )
 
             val repos = branchesRepo.getProjectRepoBranches(projectId, githubJwt)
 
             if (repos == null) {
+                LogManager.emitError(
+                    "GithubFeature.getProjectRepoBranches repo list not found -> 404: userId=$userId, projectId=$projectId"
+                )
                 call.respond(HttpStatusCode.NotFound)
                 return
             }
+            LogManager.emitError(
+                "GithubFeature.getProjectRepoBranches success: userId=$userId, projectId=$projectId, repos=${repos.size}"
+            )
 
             call.respondText(
                 Json.encodeToString(

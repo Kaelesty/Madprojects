@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Chat
-import androidx.compose.material.icons.outlined.ViewKanban
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -38,6 +36,9 @@ import ru.kaelesty.madprojects.features.project.sdk.ProjectNavItem
 import ru.kaelesty.madprojects.kmp.generated.resources.Res
 import ru.kaelesty.madprojects.kmp.generated.resources.activity
 import ru.kaelesty.madprojects.kmp.generated.resources.github
+import ru.kaelesty.madprojects.kmp.generated.resources.info
+import ru.kaelesty.madprojects.kmp.generated.resources.kanban
+import ru.kaelesty.madprojects.kmp.generated.resources.message
 import ru.kaelesty.madprojects.ui.headers.ScreenHeader
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.ui.theme.Palette
@@ -50,7 +51,7 @@ fun ProjectScreen(
     projectId: String,
     navigator: ProjectNavItem.Navigator,
 ) {
-    var selectedTab by rememberSaveable { mutableStateOf(ProjectTab.Github) }
+    var selectedTab by rememberSaveable { mutableStateOf(ProjectTab.Sprints) }
     var pendingChatId by rememberSaveable { mutableStateOf<Int?>(null) }
     koinViewModel<ProjectSocketViewModel>(parameters = { parametersOf(projectId) })
 
@@ -66,6 +67,10 @@ fun ProjectScreen(
                     .fillMaxWidth()
             ) {
                 when (selectedTab) {
+                    ProjectTab.Info -> ProjectInfoScreen(
+                        projectId = projectId,
+                        onProjectDeleted = navigator::back,
+                    )
                     ProjectTab.Github -> ProjectGithubScreen(projectId = projectId)
                     ProjectTab.Kanban -> ProjectKanbanScreen(
                         projectId = projectId,
@@ -90,6 +95,45 @@ fun ProjectScreen(
                 tonalElevation = 6.dp
             ) {
                 NavigationBarItem(
+                    selected = selectedTab == ProjectTab.Sprints,
+                    onClick = {
+                        if (selectedTab != ProjectTab.Sprints) {
+                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Sprints" }
+                        }
+                        selectedTab = ProjectTab.Sprints
+                    },
+                    icon = {
+                        ProjectNavIcon(painter = painterResource(Res.drawable.activity))
+                    },
+                    colors = navigationItemColors()
+                )
+                NavigationBarItem(
+                    selected = selectedTab == ProjectTab.Messenger,
+                    onClick = {
+                        if (selectedTab != ProjectTab.Messenger) {
+                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Messenger" }
+                        }
+                        selectedTab = ProjectTab.Messenger
+                    },
+                    icon = {
+                        ProjectNavIcon(painter = painterResource(Res.drawable.message))
+                    },
+                    colors = navigationItemColors()
+                )
+                NavigationBarItem(
+                    selected = selectedTab == ProjectTab.Kanban,
+                    onClick = {
+                        if (selectedTab != ProjectTab.Kanban) {
+                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Kanban" }
+                        }
+                        selectedTab = ProjectTab.Kanban
+                    },
+                    icon = {
+                        ProjectNavIcon(painter = painterResource(Res.drawable.kanban))
+                    },
+                    colors = navigationItemColors()
+                )
+                NavigationBarItem(
                     selected = selectedTab == ProjectTab.Github,
                     onClick = {
                         if (selectedTab != ProjectTab.Github) {
@@ -103,41 +147,15 @@ fun ProjectScreen(
                     colors = navigationItemColors()
                 )
                 NavigationBarItem(
-                    selected = selectedTab == ProjectTab.Kanban,
+                    selected = selectedTab == ProjectTab.Info,
                     onClick = {
-                        if (selectedTab != ProjectTab.Kanban) {
-                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Kanban" }
+                        if (selectedTab != ProjectTab.Info) {
+                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Info" }
                         }
-                        selectedTab = ProjectTab.Kanban
+                        selectedTab = ProjectTab.Info
                     },
                     icon = {
-                        ProjectNavIcon(imageVector = Icons.Outlined.ViewKanban)
-                    },
-                    colors = navigationItemColors()
-                )
-                NavigationBarItem(
-                    selected = selectedTab == ProjectTab.Messenger,
-                    onClick = {
-                        if (selectedTab != ProjectTab.Messenger) {
-                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Messenger" }
-                        }
-                        selectedTab = ProjectTab.Messenger
-                    },
-                    icon = {
-                        ProjectNavIcon(imageVector = Icons.Outlined.Chat)
-                    },
-                    colors = navigationItemColors()
-                )
-                NavigationBarItem(
-                    selected = selectedTab == ProjectTab.Sprints,
-                    onClick = {
-                        if (selectedTab != ProjectTab.Sprints) {
-                            KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Sprints" }
-                        }
-                        selectedTab = ProjectTab.Sprints
-                    },
-                    icon = {
-                        ProjectNavIcon(painter = painterResource(Res.drawable.activity))
+                        ProjectNavIcon(painter = painterResource(Res.drawable.info))
                     },
                     colors = navigationItemColors()
                 )
@@ -147,6 +165,7 @@ fun ProjectScreen(
 }
 
 private enum class ProjectTab {
+    Info,
     Github,
     Kanban,
     Messenger,

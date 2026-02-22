@@ -10,7 +10,7 @@ data class Project(
     val repos: List<ProjectRepository>,
     val isCreator: Boolean,
     val status: ProjectStatus,
-    val mark: Int?
+    val mark: Int?,
 )
 
 @Serializable
@@ -19,7 +19,7 @@ data class ProjectMeta(
     val title: String,
     val desc: String,
     val maxMembersCount: Int,
-    val createDate: String
+    val createDate: String,
 )
 
 @Serializable

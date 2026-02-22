@@ -3,6 +3,7 @@ package ru.kaelesty.madprojects.features.project.domain
 import domain.sprints.ProfileSprint
 import domain.sprints.SprintView
 import io.ktor.http.HttpStatusCode
+import ru.kaelesty.madprojects.api.activity.ActivityResponse
 import ru.kaelesty.madprojects.api.sprints.CreateSprintRequest
 import ru.kaelesty.madprojects.api.sprints.UpdateSprintRequest
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
@@ -43,6 +44,42 @@ class GetProjectSprintsUseCase(
 
     private companion object {
         private const val TAG = "GetProjectSprintsUseCase"
+    }
+}
+
+class GetProjectActivitiesUseCase(
+    private val api: ProjectSprintsApi,
+    private val authContext: AuthContext,
+) {
+    suspend fun load(projectId: String, count: Int? = 7): Result {
+        KLogger.d(TAG) { "load project activities start: projectId=$projectId count=$count" }
+        val accessToken = authContext.getAccessToken() ?: run {
+            KLogger.w(TAG) { "load project activities failed: access token missing" }
+            return Result.Fail(null, null)
+        }
+        val response = api.getProjectActivities(accessToken, projectId, count) ?: run {
+            KLogger.w(TAG) { "load project activities failed: response is null" }
+            return Result.Fail(null, null)
+        }
+        if (response.status == HttpStatusCode.OK) {
+            val body = response.body ?: run {
+                KLogger.w(TAG) { "load project activities failed: body missing" }
+                return Result.Fail(response.status, response.errorMessage)
+            }
+            KLogger.i(TAG) { "load project activities success: count=${body.activities.size}" }
+            return Result.Success(body)
+        }
+        KLogger.w(TAG) { "load project activities failed: status=${response.status} message=${response.errorMessage}" }
+        return Result.Fail(response.status, response.errorMessage)
+    }
+
+    sealed interface Result {
+        data class Success(val response: ActivityResponse) : Result
+        data class Fail(val status: HttpStatusCode?, val message: String?) : Result
+    }
+
+    private companion object {
+        private const val TAG = "GetProjectActivitiesUseCase"
     }
 }
 

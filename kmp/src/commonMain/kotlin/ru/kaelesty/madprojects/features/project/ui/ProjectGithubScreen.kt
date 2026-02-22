@@ -65,6 +65,7 @@ fun ProjectGithubScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(min = 280.dp, max = 420.dp)
+                .padding(bottom = 8.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally

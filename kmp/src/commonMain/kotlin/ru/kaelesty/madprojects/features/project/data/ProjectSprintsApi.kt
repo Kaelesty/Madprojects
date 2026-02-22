@@ -1,9 +1,9 @@
 package ru.kaelesty.madprojects.features.project.data
 
+import io.ktor.client.call.body
 import domain.sprints.ProfileSprint
 import domain.sprints.SprintView
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.plugins.expectSuccess
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -13,6 +13,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import ru.kaelesty.madprojects.api.activity.ActivityResponse
 import ru.kaelesty.madprojects.api.sprints.CreateSprintRequest
 import ru.kaelesty.madprojects.api.sprints.UpdateSprintRequest
 import ru.kaelesty.madprojects.utils.KLogger
@@ -183,6 +184,42 @@ class ProjectSprintsApi(
         }
     }
 
+    suspend fun getProjectActivities(
+        accessToken: String,
+        projectId: String,
+        count: Int? = null,
+    ): ProjectActivitiesResponse? {
+        return runCatching {
+            val response = client.get(ProjectActivitiesPath) {
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
+                parameter(ProjectIdParam, projectId)
+                if (count != null) {
+                    parameter(CountParam, count)
+                }
+                expectSuccess = false
+            }
+            KLogger.d(TAG) { "Project activities response status=${response.status}" }
+            val body = if (response.status == HttpStatusCode.OK) {
+                response.body<ActivityResponse>()
+            } else {
+                null
+            }
+            val errorMessage = if (response.status != HttpStatusCode.OK) {
+                response.bodyAsText().trim().takeIf { it.isNotEmpty() }
+            } else {
+                null
+            }
+            ProjectActivitiesResponse(
+                status = response.status,
+                body = body,
+                errorMessage = errorMessage,
+            )
+        }.getOrElse {
+            KLogger.e(TAG, it) { "Project activities request failed" }
+            null
+        }
+    }
+
     data class ProjectSprintsResponse(
         val status: HttpStatusCode,
         val sprints: List<ProfileSprint>? = null,
@@ -212,6 +249,12 @@ class ProjectSprintsApi(
         val errorMessage: String? = null,
     )
 
+    data class ProjectActivitiesResponse(
+        val status: HttpStatusCode,
+        val body: ActivityResponse? = null,
+        val errorMessage: String? = null,
+    )
+
     private companion object {
         private const val TAG = "ktor-ProjectSprintsApi"
         private const val SprintsListPath = "/sprint/getListByProject"
@@ -220,7 +263,9 @@ class ProjectSprintsApi(
         private const val SprintFinishPath = "/sprint/finish"
         private const val SprintDetailsPath = "/sprint/get"
         private const val ProjectKardsPath = "/project/kards"
+        private const val ProjectActivitiesPath = "/project/activity/get"
         private const val ProjectIdParam = "projectId"
         private const val SprintIdParam = "sprintId"
+        private const val CountParam = "count"
     }
 }

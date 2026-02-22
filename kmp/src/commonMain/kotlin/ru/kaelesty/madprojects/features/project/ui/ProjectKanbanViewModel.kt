@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ru.kaelesty.madprojects.features.project.domain.CreateKardChatUseCase
 import ru.kaelesty.madprojects.features.project.domain.KanbanSocket
@@ -42,6 +44,8 @@ class ProjectKanbanViewModel(
     val events = _events.asSharedFlow()
 
     private val parsedProjectId = projectId.toIntOrNull()
+    private var requestKanbanWatchdogJob: Job? = null
+    private var lastKanbanRequestSeq = 0L
 
     init {
         if (parsedProjectId == null) {
@@ -59,16 +63,19 @@ class ProjectKanbanViewModel(
 
     override fun onCleared() {
         KLogger.d(TAG) { "onCleared: disconnect" }
+        requestKanbanWatchdogJob?.cancel()
         kanbanSocket.disconnect()
     }
 
     private fun observeSocketState() {
         viewModelScope.launch {
             kanbanSocket.state.collectLatest { state ->
+                KLogger.d(TAG) { "socket state event: ${describeSocketState(state)}" }
                 when (state) {
                     is KanbanSocket.ConnectionState.Authorized -> {
                         KLogger.d(TAG) { "socket authorized, requesting kanban" }
                         _state.update { it.copy(isLoading = true, errorMessage = null) }
+                        scheduleRequestKanbanWatchdog("authorized")
                         kanbanSocket.requestKanban()
                     }
                     is KanbanSocket.ConnectionState.Connecting,
@@ -79,6 +86,7 @@ class ProjectKanbanViewModel(
                         }
                     }
                     is KanbanSocket.ConnectionState.Failed -> {
+                        requestKanbanWatchdogJob?.cancel()
                         KLogger.w(TAG) { "socket failed: ${state.reason}" }
                         _state.update {
                             if (it.kanban == null) {
@@ -89,6 +97,7 @@ class ProjectKanbanViewModel(
                         }
                     }
                     KanbanSocket.ConnectionState.AuthRequired -> {
+                        requestKanbanWatchdogJob?.cancel()
                         KLogger.w(TAG) { "socket requires auth" }
                         _state.update {
                             if (it.kanban == null) {
@@ -98,7 +107,9 @@ class ProjectKanbanViewModel(
                             }
                         }
                     }
-                    KanbanSocket.ConnectionState.Idle -> Unit
+                    KanbanSocket.ConnectionState.Idle -> {
+                        requestKanbanWatchdogJob?.cancel()
+                    }
                 }
             }
         }
@@ -107,8 +118,10 @@ class ProjectKanbanViewModel(
     private fun observeSocketActions() {
         viewModelScope.launch {
             kanbanSocket.actions.collectLatest { action ->
+                KLogger.d(TAG) { "socket action event: ${describeKanbanAction(action)}" }
                 when (action) {
                     is Action.Kanban.SetState -> {
+                        requestKanbanWatchdogJob?.cancel()
                         KLogger.i(TAG) { "kanban state received: columns=${action.kanban.columns.size}" }
                         _state.update {
                             it.copy(
@@ -263,7 +276,47 @@ class ProjectKanbanViewModel(
         }
     }
 
+    private fun scheduleRequestKanbanWatchdog(source: String) {
+        val seq = ++lastKanbanRequestSeq
+        requestKanbanWatchdogJob?.cancel()
+        requestKanbanWatchdogJob = viewModelScope.launch {
+            delay(KANBAN_REQUEST_WATCHDOG_DELAY_MS)
+            val ui = _state.value
+            val socketState = kanbanSocket.state.value
+            if (ui.kanban == null && ui.isLoading) {
+                KLogger.w(TAG) {
+                    "kanban request watchdog fired: seq=$seq source=$source projectId=$parsedProjectId " +
+                        "uiLoading=${ui.isLoading} error=${ui.errorMessage} socketState=${describeSocketState(socketState)}"
+                }
+            } else {
+                KLogger.d(TAG) {
+                    "kanban request watchdog resolved: seq=$seq hasKanban=${ui.kanban != null} " +
+                        "uiLoading=${ui.isLoading} socketState=${describeSocketState(socketState)}"
+                }
+            }
+        }
+    }
+
+    private fun describeSocketState(state: KanbanSocket.ConnectionState): String = when (state) {
+        is KanbanSocket.ConnectionState.Authorized -> "Authorized(projectId=${state.projectId})"
+        is KanbanSocket.ConnectionState.Connecting -> "Connecting(attempt=${state.attempt})"
+        is KanbanSocket.ConnectionState.Failed -> "Failed(reason=${state.reason})"
+        KanbanSocket.ConnectionState.AuthRequired -> "AuthRequired"
+        KanbanSocket.ConnectionState.Connected -> "Connected"
+        KanbanSocket.ConnectionState.Disconnected -> "Disconnected"
+        KanbanSocket.ConnectionState.Idle -> "Idle"
+    }
+
+    private fun describeKanbanAction(action: Action.Kanban): String = when (action) {
+        is Action.Kanban.SetState -> {
+            var cards = 0
+            action.kanban.columns.forEach { cards += it.kards.size }
+            "SetState(columns=${action.kanban.columns.size}, cards=$cards)"
+        }
+    }
+
     private companion object {
         private const val TAG = "ProjectKanbanViewModel"
+        private const val KANBAN_REQUEST_WATCHDOG_DELAY_MS = 6_000L
     }
 }

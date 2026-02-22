@@ -14,15 +14,30 @@ class GithubTokenUtil(
     private val config: app.config.Config
 ) {
     suspend fun getGithubAccessToken(userId: String): String? {
+        LogManager.emitError("GithubTokenUtil.getGithubAccessToken start: userId=$userId")
 
         val accessToken = githubTokensRepo.getAccessToken(userId)
         if (accessToken is GithubTokensRepo.Token.Alive) {
+            LogManager.emitError(
+                "GithubTokenUtil.getGithubAccessToken access token alive: userId=$userId, length=${accessToken.token.length}"
+            )
             return accessToken.token
+        }
+        if (accessToken is GithubTokensRepo.Token.Expired) {
+            LogManager.emitError("GithubTokenUtil.getGithubAccessToken access token expired: userId=$userId")
+        } else if (accessToken == null) {
+            LogManager.emitError("GithubTokenUtil.getGithubAccessToken access token missing: userId=$userId")
         }
 
         githubTokensRepo.getRefreshToken(userId)?.let { refresh ->
-            if (refresh is GithubTokensRepo.Token.Expired) return null
+            if (refresh is GithubTokensRepo.Token.Expired) {
+                LogManager.emitError("GithubTokenUtil.getGithubAccessToken refresh token expired: userId=$userId")
+                return null
+            }
             val refreshToken = refresh as? GithubTokensRepo.Token.Alive ?: return null
+            LogManager.emitError(
+                "GithubTokenUtil.getGithubAccessToken trying refresh: userId=$userId, refreshLength=${refreshToken.token.length}"
+            )
             val gConfig = config.github
             val response = httpClient.submitForm(
                 url = "https://github.com/login/oauth/access_token",
@@ -36,7 +51,14 @@ class GithubTokenUtil(
                 headers.append(HttpHeaders.Accept, "application/json")
             }
 
-            val payload = parseGithubOauthTokens(response.bodyAsText())
+            val responseText = response.bodyAsText()
+            val payload = parseGithubOauthTokens(responseText)
+            LogManager.emitError(
+                "GithubTokenUtil.getGithubAccessToken refresh response: userId=$userId, " +
+                    "status=${response.status.value}, hasAccess=${!payload?.access_token.isNullOrBlank()}, " +
+                    "hasRefresh=${!payload?.refresh_token.isNullOrBlank()}, error=${payload?.error}, " +
+                    "description=${payload?.error_description}, rawLength=${responseText.length}"
+            )
             if (response.status != HttpStatusCode.OK || payload?.access_token.isNullOrBlank()) {
                 LogManager.emitError(
                     "GitHub refresh failed for userId=$userId, status=${response.status.value}, " +
@@ -51,8 +73,13 @@ class GithubTokenUtil(
                 refresh = payload.refresh_token ?: refreshToken.token,
                 userId = userId,
             )
+            LogManager.emitError(
+                "GithubTokenUtil.getGithubAccessToken refresh success: userId=$userId, newAccessLength=${access.length}, " +
+                    "newRefreshProvided=${!payload?.refresh_token.isNullOrBlank()}"
+            )
             return access
         }
+        LogManager.emitError("GithubTokenUtil.getGithubAccessToken refresh token missing: userId=$userId")
         return null
     }
 }
