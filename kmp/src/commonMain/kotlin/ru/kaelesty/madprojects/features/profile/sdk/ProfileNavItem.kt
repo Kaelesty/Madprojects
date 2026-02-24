@@ -5,6 +5,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import kotlinx.serialization.Serializable
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
+import ru.kaelesty.madprojects.features.profile.ui.CuratorGroupScreen
 import ru.kaelesty.madprojects.features.profile.ui.ProfileScreen
 import ru.kaelesty.madprojects.features.project.sdk.ProjectNavItem
 import ru.kaelesty.madprojects.features.projectcreate.sdk.ProjectCreateNavItem
@@ -26,6 +27,15 @@ class ProfileNavItem(
             logNavigate(ProjectNavItem.Route.Project(projectId))
             navController.navigate(ProjectNavItem.Route.Project(projectId))
         }
+        fun toCuratorGroup(groupId: String) {
+            logNavigate(Route.CuratorGroup(groupId))
+            navController.navigate(Route.CuratorGroup(groupId))
+        }
+        fun back() {
+            val from = navController.currentBackStackEntry?.destination?.route ?: "unknown"
+            KLogger.d(TAG) { "navigate: $from -> back" }
+            navController.popBackStack()
+        }
 
         private fun logNavigate(target: Any) {
             val from = navController.currentBackStackEntry?.destination?.route ?: "unknown"
@@ -38,11 +48,19 @@ class ProfileNavItem(
         composable<Route.Profile> {
             ProfileScreen(authContext, navigator)
         }
+        composable<Route.CuratorGroup> { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+            CuratorGroupScreen(
+                groupId = groupId,
+                onBack = navigator::back
+            )
+        }
     }
 
     @Serializable
     sealed interface Route {
         @Serializable data object Profile : Route
+        @Serializable data class CuratorGroup(val groupId: String) : Route
     }
 }
 

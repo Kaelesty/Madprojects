@@ -113,6 +113,21 @@ class ProjectCuratorshipService(
             }
     }
 
+    suspend fun countPendingProjectsByGroupId(groupId_: Int) = dbQuery {
+        (ProjectsCuratorship innerJoin ProjectService.Projects)
+            .selectAll()
+            .where {
+                (ProjectsCuratorship.projectGroupId eq groupId_) and
+                    (ProjectsCuratorship.status eq ProjectStatus.Pending) and
+                    (
+                        (ProjectService.Projects.isDeleted eq false) or
+                            ProjectService.Projects.isDeleted.isNull()
+                    )
+            }
+            .count()
+            .toInt()
+    }
+
     suspend fun getUnmarkedProjectIds(curatorId: Int) = dbQuery {
         ProjectsCuratorship.selectAll()
             .where {

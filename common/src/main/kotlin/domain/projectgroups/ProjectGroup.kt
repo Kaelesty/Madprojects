@@ -7,7 +7,8 @@ import kotlinx.serialization.Serializable
 data class ProjectGroup(
     val id: String,
     val curatorId: String,
-    val title: String
+    val title: String,
+    val pendingProjectsCount: Int = 0,
 )
 
 @Serializable

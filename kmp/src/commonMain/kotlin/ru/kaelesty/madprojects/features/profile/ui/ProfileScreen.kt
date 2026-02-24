@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +47,7 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import domain.auth.UserType
 import domain.profile.ProfileProject
+import domain.projectgroups.ProjectGroup
 import domain.project.ProjectStatus
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -72,10 +74,14 @@ fun ProfileScreen(
     ProfileScaffold(title = StringResources.ProfileTitle) {
         when (userType) {
             UserType.Common -> CommonProfileContent(
+                authContext = authContext,
                 onCreateProject = navigator::toCreateProject,
                 onProjectClick = navigator::toProject
             )
-            UserType.Curator -> CuratorProfileContent()
+            UserType.Curator -> CuratorProfileContent(
+                authContext = authContext,
+                onGroupClick = navigator::toCuratorGroup,
+            )
             null -> ProfilePlaceholderContent(StringResources.ProfilePlaceholder)
         }
     }
@@ -83,6 +89,7 @@ fun ProfileScreen(
 
 @Composable
 private fun CommonProfileContent(
+    authContext: AuthContext,
     onCreateProject: () -> Unit,
     onProjectClick: (String) -> Unit,
 ) {
@@ -90,6 +97,7 @@ private fun CommonProfileContent(
     val state by vm.state.collectAsState()
     val projectsState by vm.projectsState.collectAsState()
     val joinDialogState by vm.joinDialogState.collectAsState()
+    val editDialogState by vm.editDialogState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner, vm) {
@@ -110,6 +118,25 @@ private fun CommonProfileContent(
             onConfirm = vm::submitJoin,
         )
     }
+    if (editDialogState.isOpen) {
+        ProfileEditDialog(
+            title = StringResources.ProfileEditDialogTitle,
+            extraFieldLabel = StringResources.ProfileEditGroupLabel,
+            extraFieldPlaceholder = StringResources.ProfileEditGroupPlaceholder,
+            firstName = editDialogState.firstName,
+            secondName = editDialogState.secondName,
+            lastName = editDialogState.lastName,
+            extraValue = editDialogState.group,
+            errorMessage = editDialogState.errorMessage,
+            isSubmitting = editDialogState.isSubmitting,
+            onDismiss = vm::closeEditDialog,
+            onFirstNameChange = vm::setEditFirstName,
+            onSecondNameChange = vm::setEditSecondName,
+            onLastNameChange = vm::setEditLastName,
+            onExtraValueChange = vm::setEditGroup,
+            onConfirm = vm::submitEdit,
+        )
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -128,39 +155,15 @@ private fun CommonProfileContent(
             }
             is CommonProfileViewModel.State.Loaded -> {
                 val profile = current.profile
-                val avatarUrl = profile.githubMeta?.githubAvatar
-                ProfileCard {
-                    if (avatarUrl.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .size(96.dp)
-                                .background(Palette.FieldBorder, CircleShape)
-                        )
-                    } else {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = StringResources.ProfileAvatar,
-                            modifier = Modifier
-                                .size(96.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "${profile.lastName} ${profile.firstName} ${profile.secondName}",
-                        style = TextStyle(
-                            color = Palette.OnCard,
-                            fontFamily = Roboto,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            textAlign = TextAlign.Center
-                        )
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(text = "${StringResources.ProfileEmailLabel}${profile.email}", color = Palette.OnCard, fontFamily = Roboto)
-                    Text(text = "${StringResources.ProfileGroupLabel}${profile.group}", color = Palette.OnCard, fontFamily = Roboto)
-                }
+                ProfileIdentityCard(
+                    avatarUrl = profile.githubMeta?.githubAvatar,
+                    fullName = fullName(profile.lastName, profile.firstName, profile.secondName),
+                    email = profile.email,
+                    secondaryLabel = StringResources.ProfileGroupLabel,
+                    secondaryValue = profile.group,
+                    onEdit = vm::openEditDialog,
+                    onLogout = authContext::logout,
+                )
             }
             CommonProfileViewModel.State.Error -> {
                 ProfileCard {
@@ -195,8 +198,182 @@ private fun CommonProfileContent(
 }
 
 @Composable
-private fun CuratorProfileContent() {
-    ProfilePlaceholderContent(StringResources.CuratorProfilePlaceholder)
+private fun CuratorProfileContent(
+    authContext: AuthContext,
+    onGroupClick: (String) -> Unit,
+) {
+    val vm = koinViewModel<CuratorProfileViewModel>()
+    val state by vm.state.collectAsState()
+    val editDialogState by vm.editDialogState.collectAsState()
+    val deleteGroupDialogState by vm.deleteGroupDialogState.collectAsState()
+
+    if (editDialogState.isOpen) {
+        ProfileEditDialog(
+            title = StringResources.ProfileEditDialogTitle,
+            extraFieldLabel = StringResources.ProfileEditGradeLabel,
+            extraFieldPlaceholder = StringResources.ProfileEditGradePlaceholder,
+            firstName = editDialogState.firstName,
+            secondName = editDialogState.secondName,
+            lastName = editDialogState.lastName,
+            extraValue = editDialogState.grade,
+            errorMessage = editDialogState.errorMessage,
+            isSubmitting = editDialogState.isSubmitting,
+            onDismiss = vm::closeEditDialog,
+            onFirstNameChange = vm::setEditFirstName,
+            onSecondNameChange = vm::setEditSecondName,
+            onLastNameChange = vm::setEditLastName,
+            onExtraValueChange = vm::setEditGrade,
+            onConfirm = vm::submitEdit,
+        )
+    }
+    if (deleteGroupDialogState.isOpen) {
+        DeleteProjectGroupDialog(
+            state = deleteGroupDialogState,
+            onDismiss = vm::closeDeleteGroupDialog,
+            onConfirm = vm::submitDeleteGroup,
+        )
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        when (val current = state) {
+            CuratorProfileViewModel.State.Loading -> {
+                ProfileCard {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        color = Palette.AccentBlue,
+                        strokeWidth = 3.dp
+                    )
+                }
+            }
+            is CuratorProfileViewModel.State.Loaded -> {
+                val profile = current.profile
+                ProfileIdentityCard(
+                    avatarUrl = profile.githubMeta?.githubAvatar,
+                    fullName = fullName(profile.lastName, profile.firstName, profile.secondName),
+                    email = profile.email,
+                    secondaryLabel = StringResources.ProfileGradeLabel,
+                    secondaryValue = profile.grade,
+                    onEdit = vm::openEditDialog,
+                    onLogout = authContext::logout,
+                )
+                ProjectGroupsCard(
+                    groups = profile.projectGroups,
+                    onOpenGroup = { onGroupClick(it.id) },
+                    onDeleteGroup = { vm.openDeleteGroupDialog(it.id, it.title) }
+                )
+            }
+            is CuratorProfileViewModel.State.Error -> {
+                ProfileCard {
+                    Text(
+                        text = current.message ?: StringResources.LoadError,
+                        style = TextStyle(
+                            color = Palette.OnCard,
+                            fontFamily = Roboto,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center
+                        )
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    PrimaryActionButton(
+                        text = StringResources.RetryButton,
+                        onClick = vm::load,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteProjectGroupDialog(
+    state: CuratorProfileViewModel.DeleteGroupDialogState,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(min = 280.dp, max = 420.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = Palette.CardSurface,
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = StringResources.CuratorProfileDeleteGroupDialogTitle,
+                    style = TextStyle(
+                        color = Palette.OnCard,
+                        fontFamily = Roboto,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+                Text(
+                    text = StringResources.CuratorProfileDeleteGroupDialogBodyPrefix + state.groupTitle,
+                    color = Palette.FieldLabel,
+                    fontFamily = Roboto,
+                    fontSize = 14.sp
+                )
+                state.errorMessage?.let { message ->
+                    Text(
+                        text = message,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.error,
+                        fontFamily = Roboto,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                if (state.isSubmitting) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Palette.AccentBlue,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = StringResources.CuratorProfileDeleteGroupSubmitting,
+                            color = Palette.FieldLabel,
+                            fontFamily = Roboto,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                PrimaryActionButton(
+                    text = StringResources.CuratorProfileDeleteGroupConfirmButton,
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isSubmitting
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !state.isSubmitting,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = Palette.AccentBlue
+                    )
+                ) {
+                    Text(
+                        text = StringResources.CuratorProfileDeleteGroupCancelButton,
+                        fontFamily = Roboto
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -213,6 +390,351 @@ private fun ProfilePlaceholderContent(title: String) {
             )
         )
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun ProfileIdentityCard(
+    avatarUrl: String?,
+    fullName: String,
+    email: String,
+    secondaryLabel: String,
+    secondaryValue: String,
+    onEdit: () -> Unit,
+    onLogout: () -> Unit,
+) {
+    val (menuExpanded, setMenuExpanded) = remember { mutableStateOf(false) }
+    val menuItems = listOf(
+        AppDropdownMenuItem(
+            text = StringResources.ProfileMenuEdit,
+            onClick = {
+                setMenuExpanded(false)
+                onEdit()
+            }
+        ),
+        AppDropdownMenuItem(
+            text = StringResources.ProfileMenuLogout,
+            onClick = {
+                setMenuExpanded(false)
+                onLogout()
+            }
+        )
+    )
+    ProfileCard {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(96.dp)
+        ) {
+            if (avatarUrl.isNullOrBlank()) {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .align(Alignment.Center)
+                        .background(Palette.FieldBorder, CircleShape)
+                )
+            } else {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = StringResources.ProfileAvatar,
+                    modifier = Modifier
+                        .size(96.dp)
+                        .align(Alignment.Center)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Box(
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
+                IconButton(
+                    onClick = { setMenuExpanded(true) },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = StringResources.ProfileMenu,
+                        tint = Palette.OnCard
+                    )
+                }
+                AppDropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { setMenuExpanded(false) },
+                    items = menuItems,
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = fullName,
+            style = TextStyle(
+                color = Palette.OnCard,
+                fontFamily = Roboto,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "${StringResources.ProfileEmailLabel}$email",
+            color = Palette.OnCard,
+            fontFamily = Roboto
+        )
+        Text(
+            text = "$secondaryLabel$secondaryValue",
+            color = Palette.OnCard,
+            fontFamily = Roboto,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun ProfileEditDialog(
+    title: String,
+    extraFieldLabel: String,
+    extraFieldPlaceholder: String,
+    firstName: String,
+    secondName: String,
+    lastName: String,
+    extraValue: String,
+    errorMessage: String?,
+    isSubmitting: Boolean,
+    onDismiss: () -> Unit,
+    onFirstNameChange: (String) -> Unit,
+    onSecondNameChange: (String) -> Unit,
+    onLastNameChange: (String) -> Unit,
+    onExtraValueChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(min = 280.dp, max = 420.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = Palette.CardSurface,
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        color = Palette.OnCard,
+                        fontFamily = Roboto,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+                AppTextField(
+                    label = StringResources.ProfileEditFirstNameLabel,
+                    value = firstName,
+                    onValueChange = onFirstNameChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = StringResources.ProfileEditFirstNamePlaceholder
+                )
+                AppTextField(
+                    label = StringResources.ProfileEditLastNameLabel,
+                    value = lastName,
+                    onValueChange = onLastNameChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = StringResources.ProfileEditLastNamePlaceholder
+                )
+                AppTextField(
+                    label = StringResources.ProfileEditSecondNameLabel,
+                    value = secondName,
+                    onValueChange = onSecondNameChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = StringResources.ProfileEditSecondNamePlaceholder
+                )
+                AppTextField(
+                    label = extraFieldLabel,
+                    value = extraValue,
+                    onValueChange = onExtraValueChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = extraFieldPlaceholder
+                )
+
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.error,
+                        fontFamily = Roboto,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                if (isSubmitting) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Palette.AccentBlue,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = StringResources.ProfileEditSubmitting,
+                            color = Palette.FieldLabel,
+                            fontFamily = Roboto,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(2.dp))
+                PrimaryActionButton(
+                    text = StringResources.ProfileEditSaveButton,
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSubmitting
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !isSubmitting,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = Palette.AccentBlue
+                    )
+                ) {
+                    Text(
+                        text = StringResources.ProfileEditCancelButton,
+                        fontFamily = Roboto
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProjectGroupsCard(
+    groups: List<ProjectGroup>,
+    onOpenGroup: (ProjectGroup) -> Unit,
+    onDeleteGroup: (ProjectGroup) -> Unit,
+) {
+    ProfileCard {
+        Text(
+            text = StringResources.CuratorProfileGroupsTitle,
+            style = TextStyle(
+                color = Palette.OnCard,
+                fontFamily = Roboto,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        )
+        Spacer(Modifier.height(12.dp))
+        if (groups.isEmpty()) {
+            Text(
+                text = StringResources.CuratorProfileGroupsEmpty,
+                color = Palette.FieldLabel,
+                fontFamily = Roboto,
+                fontSize = 14.sp
+            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                groups.forEach { group ->
+                    ProjectGroupItem(
+                        group = group,
+                        onOpen = { onOpenGroup(group) },
+                        onDelete = { onDeleteGroup(group) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProjectGroupItem(
+    group: ProjectGroup,
+    onOpen: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val (menuExpanded, setMenuExpanded) = remember { mutableStateOf(false) }
+    val menuItems = listOf(
+        AppDropdownMenuItem(
+            text = StringResources.CuratorProfileDeleteGroupButton,
+            onClick = {
+                setMenuExpanded(false)
+                onDelete()
+            }
+        )
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onOpen),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(Palette.AccentBlue)
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = group.title,
+            color = Palette.OnCard,
+            fontFamily = Roboto,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
+        if (group.pendingProjectsCount > 0) {
+            Spacer(Modifier.width(10.dp))
+            Surface(
+                modifier = Modifier.size(26.dp),
+                shape = CircleShape,
+                color = Palette.AccentRed,
+                shadowElevation = 4.dp
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = group.pendingProjectsCount.toString(),
+                        color = Palette.CardSurface,
+                        fontFamily = Roboto,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.width(6.dp))
+        Box {
+            IconButton(
+                onClick = { setMenuExpanded(true) },
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.MoreVert,
+                    contentDescription = StringResources.ProfileMenu,
+                    tint = Palette.FieldLabel,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            AppDropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { setMenuExpanded(false) },
+                items = menuItems,
+            )
+        }
     }
 }
 
@@ -473,8 +995,14 @@ private fun statusColor(status: ProjectStatus) = when (status) {
     ProjectStatus.Unapproved -> Palette.AccentRed
 }
 
+private fun fullName(lastName: String, firstName: String, secondName: String): String {
+    return listOf(lastName, firstName, secondName)
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+}
+
 @Composable
-private fun ProfileScaffold(
+internal fun ProfileScaffold(
     title: String,
     content: @Composable () -> Unit,
 ) {

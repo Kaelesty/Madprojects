@@ -83,6 +83,11 @@ class AuthContextImpl(
         provideAuth(tokens, userType)
     }
 
+    override fun logout() {
+        KLogger.i(TAG) { "logout: invalidating auth by user action" }
+        invalidateAuth()
+    }
+
     private fun provideAuth(tokens: Tokens, userType: UserType) {
         KLogger.d(TAG) { "provideAuth: userType=$userType" }
         scope.launch {
@@ -94,6 +99,7 @@ class AuthContextImpl(
     private fun invalidateAuth() {
         KLogger.d(TAG) { "invalidateAuth" }
         scope.launch {
+            storage?.clear()
             _tokens.emit(null)
             userTypeState.emit(null)
         }

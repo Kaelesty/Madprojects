@@ -33,7 +33,15 @@ class ProjectGroupsRepoImpl(
     }
 
     override suspend fun getCuratorProjectGroups(curatorId: String): List<ProjectGroup> {
-        return projectGroupsService.getCuratorProjectGroups(curatorId.toInt())
+        return projectGroupsService
+            .getCuratorProjectGroups(curatorId.toInt())
+            .map { group ->
+                group.copy(
+                    pendingProjectsCount = projectCuratorshipService.countPendingProjectsByGroupId(
+                        group.id.toInt()
+                    )
+                )
+            }
     }
 
     override suspend fun checkIsCuratorGroupOwner(curatorId: String, groupId: String): Boolean {

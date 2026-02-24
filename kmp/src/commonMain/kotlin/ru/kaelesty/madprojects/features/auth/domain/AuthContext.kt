@@ -15,4 +15,6 @@ interface AuthContext {
     fun onUnauthorizedResponse()
 
     fun onAuthorized(tokens: Tokens, userType: UserType)
+
+    fun logout()
 }
