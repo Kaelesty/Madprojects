@@ -1,5 +1,6 @@
 ﻿package ru.kaelesty.madprojects.features.project.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -27,11 +29,16 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,12 +49,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import domain.CommiterModel
 import domain.activity.Activity
 import domain.activity.ActivityType
 import domain.profile.SharedProfile
@@ -80,6 +93,7 @@ fun ProjectSprintsScreen(
     )
     val listState by listVm.state.collectAsState()
     val activityState by listVm.activityState.collectAsState()
+    val analyticsState by listVm.analyticsState.collectAsState()
     val uriHandler = LocalUriHandler.current
     var page by remember { mutableStateOf<SprintsPage>(SprintsPage.List) }
 
@@ -98,11 +112,13 @@ fun ProjectSprintsScreen(
         when (val current = page) {
             SprintsPage.List -> SprintsListContent(
                 state = listState,
+                analyticsState = analyticsState,
                 activityState = activityState,
                 onCreate = { page = SprintsPage.Create },
                 onOpenSprint = { sprintId -> page = SprintsPage.Details(sprintId) },
                 onOpenRepo = uriHandler::openUri,
-                onRetry = listVm::load
+                onRetry = listVm::load,
+                onRetryAnalytics = listVm::reloadAnalytics,
             )
             is SprintsPage.Details -> ProjectSprintDetailsScreen(
                 projectId = projectId,
@@ -137,11 +153,13 @@ private sealed interface SprintsPage {
 @Composable
 private fun SprintsListContent(
     state: ProjectSprintsViewModel.State,
+    analyticsState: ProjectSprintsViewModel.AnalyticsState,
     activityState: ProjectSprintsViewModel.ActivityState,
     onCreate: () -> Unit,
     onOpenSprint: (String) -> Unit,
     onOpenRepo: (String) -> Unit,
     onRetry: () -> Unit,
+    onRetryAnalytics: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -150,6 +168,11 @@ private fun SprintsListContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        AnalyticsCommitsCard(
+            state = analyticsState,
+            onRetry = onRetryAnalytics,
+        )
+
         ActivityFeedCard(
             state = activityState,
             onRetry = onRetry,
@@ -216,6 +239,219 @@ private fun SprintsListContent(
         }
     }
 }
+
+@Composable
+private fun AnalyticsCommitsCard(
+    state: ProjectSprintsViewModel.AnalyticsState,
+    onRetry: () -> Unit,
+) {
+    ProfileCard {
+        SectionTitle(text = "Аналитика")
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Распределение коммитов по участникам",
+            color = Palette.FieldLabel,
+            fontFamily = Roboto,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(12.dp))
+        when (state) {
+            ProjectSprintsViewModel.AnalyticsState.Loading -> {
+                RowWithLoader(text = "Загрузка аналитики...")
+            }
+            is ProjectSprintsViewModel.AnalyticsState.Error -> {
+                Text(
+                    text = state.message ?: "Ошибка загрузки аналитики",
+                    color = MaterialTheme.colorScheme.error,
+                    fontFamily = Roboto,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                PrimaryActionButton(
+                    text = StringResources.RetryButton,
+                    onClick = onRetry,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            is ProjectSprintsViewModel.AnalyticsState.Loaded -> {
+                val commiters = state.commiters
+                    .filter { it.commitsCount > 0 }
+                    .sortedByDescending { it.commitsCount }
+                if (commiters.isEmpty()) {
+                    Text(
+                        text = "Пока нет данных по коммитам",
+                        color = Palette.FieldLabel,
+                        fontFamily = Roboto,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    CommitAnalyticsContent(commiters = commiters)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommitAnalyticsContent(commiters: List<CommiterModel>) {
+    val totalCommits = commiters.sumOf { it.commitsCount }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(152.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CommitAnalyticsDonut(
+                commiters = commiters,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .size(84.dp)
+                    .clip(CircleShape)
+                    .background(Palette.CardSurface)
+                    .border(
+                        width = 1.dp,
+                        color = Palette.FieldBorder.copy(alpha = 0.5f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = totalCommits.toString(),
+                        color = Palette.OnCard,
+                        fontFamily = Roboto,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "коммитов",
+                        color = Palette.FieldLabel,
+                        fontFamily = Roboto,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            commiters.forEachIndexed { index, commiter ->
+                CommitAnalyticsLegendRow(
+                    commiter = commiter,
+                    color = analyticsChartColors[index % analyticsChartColors.size],
+                    totalCommits = totalCommits,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommitAnalyticsDonut(
+    commiters: List<CommiterModel>,
+    modifier: Modifier = Modifier,
+) {
+    val totalCommits = commiters.sumOf { it.commitsCount }.coerceAtLeast(1)
+    Canvas(modifier = modifier) {
+        val ringWidth = 16.dp.toPx()
+        val diameter = size.minDimension - ringWidth
+        val topLeft = Offset(
+            x = (size.width - diameter) / 2f,
+            y = (size.height - diameter) / 2f
+        )
+        val arcSize = Size(width = diameter, height = diameter)
+
+        drawArc(
+            color = Palette.FieldBorder.copy(alpha = 0.28f),
+            startAngle = 0f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = ringWidth)
+        )
+
+        var startAngle = -90f
+        commiters.forEachIndexed { index, commiter ->
+            val sweepAngle = if (commiters.size == 1) {
+                360f
+            } else {
+                (commiter.commitsCount.toFloat() / totalCommits.toFloat()) * 360f
+            }
+            drawArc(
+                color = analyticsChartColors[index % analyticsChartColors.size],
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = ringWidth, cap = StrokeCap.Round)
+            )
+            startAngle += sweepAngle
+        }
+    }
+}
+
+@Composable
+private fun CommitAnalyticsLegendRow(
+    commiter: CommiterModel,
+    color: Color,
+    totalCommits: Int,
+) {
+    val percent = ((commiter.commitsCount * 100f) / totalCommits.coerceAtLeast(1)).toInt()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = commiter.fullName.ifBlank { "Без имени" },
+            color = Palette.OnCard,
+            fontFamily = Roboto,
+            fontSize = 13.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "${commiter.commitsCount} (${percent}%)",
+            color = Palette.FieldLabel,
+            fontFamily = Roboto,
+            fontSize = 12.sp,
+        )
+    }
+}
+
+private val analyticsChartColors = listOf(
+    Color(0xFF3B82F6),
+    Color(0xFF06B6D4),
+    Color(0xFF10B981),
+    Color(0xFFF59E0B),
+    Color(0xFFEF4444),
+    Color(0xFF8B5CF6),
+    Color(0xFFEC4899),
+    Color(0xFF14B8A6),
+)
 
 @Composable
 private fun ActivityFeedCard(
@@ -414,6 +650,7 @@ private fun ProjectSprintCreateScreen(
         parameters = { parametersOf(projectId) }
     )
     val state by vm.state.collectAsState()
+    var showEndDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.success) {
         if (state.success) {
@@ -442,7 +679,8 @@ private fun ProjectSprintCreateScreen(
             onTitleChange = vm::setTitle,
             onDescChange = vm::setDesc,
             onEndDateChange = vm::setEndDate,
-            showEndDate = true
+            showEndDate = true,
+            onOpenEndDatePicker = { showEndDatePicker = true }
         )
 
         SprintTasksCard(
@@ -482,6 +720,17 @@ private fun ProjectSprintCreateScreen(
         ) {
             Text(text = StringResources.ProjectSprintSubmitCancel, fontFamily = Roboto)
         }
+    }
+
+    if (showEndDatePicker) {
+        SprintEndDatePickerDialog(
+            currentValue = state.endDate,
+            onDismiss = { showEndDatePicker = false },
+            onConfirm = { value ->
+                vm.setEndDate(value)
+                showEndDatePicker = false
+            }
+        )
     }
 }
 
@@ -838,6 +1087,7 @@ private fun SprintFormCard(
     onDescChange: (String) -> Unit,
     onEndDateChange: (String) -> Unit,
     showEndDate: Boolean,
+    onOpenEndDatePicker: (() -> Unit)? = null,
 ) {
     ProfileCard {
         SectionTitle(text = StringResources.ProjectSprintMetaTitle)
@@ -867,7 +1117,118 @@ private fun SprintFormCard(
                 value = endDate,
                 onValueChange = onEndDateChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = StringResources.ProjectSprintFieldEndDatePlaceholder
+                placeholder = StringResources.ProjectSprintFieldEndDatePlaceholder,
+                readOnly = onOpenEndDatePicker != null,
+                onClick = onOpenEndDatePicker,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SprintEndDatePickerDialog(
+    currentValue: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    val initialDateMillis = remember(currentValue) {
+        parseDate(currentValue)?.let(::localDateToPickerUtcMillis)
+    }
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = initialDateMillis
+    )
+    val pickerColorScheme = MaterialTheme.colorScheme.copy(
+        primary = Palette.AccentBlue,
+        onPrimary = Palette.ButtonTextOnPrimary,
+        surface = Palette.CardSurface,
+        onSurface = Palette.OnCard,
+        surfaceVariant = Palette.FieldBg,
+        onSurfaceVariant = Palette.FieldLabel,
+        outline = Palette.FieldBorder,
+    )
+
+    MaterialTheme(colorScheme = pickerColorScheme) {
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
+            colors = DatePickerDefaults.colors(
+                containerColor = Palette.CardSurface,
+                titleContentColor = Palette.OnCard,
+                headlineContentColor = Palette.OnCard,
+                weekdayContentColor = Palette.FieldLabel,
+                subheadContentColor = Palette.FieldLabel,
+                yearContentColor = Palette.FieldLabel,
+                currentYearContentColor = Palette.AccentBlue,
+                selectedYearContentColor = Palette.ButtonTextOnPrimary,
+                selectedYearContainerColor = Palette.AccentBlue,
+                dayContentColor = Palette.OnCard,
+                disabledDayContentColor = Palette.FieldLabel.copy(alpha = 0.4f),
+                selectedDayContentColor = Palette.ButtonTextOnPrimary,
+                disabledSelectedDayContentColor = Palette.ButtonTextOnPrimary.copy(alpha = 0.5f),
+                selectedDayContainerColor = Palette.AccentBlue,
+                todayContentColor = Palette.AccentBlue,
+                todayDateBorderColor = Palette.AccentBlue,
+                dayInSelectionRangeContentColor = Palette.OnCard,
+                dayInSelectionRangeContainerColor = Palette.AccentBlue.copy(alpha = 0.18f),
+                dividerColor = Palette.FieldBorder,
+                navigationContentColor = Palette.OnCard,
+            ),
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selected = state.selectedDateMillis ?: return@TextButton
+                        onConfirm(formatSprintDateFromPickerMillis(selected))
+                    },
+                    enabled = state.selectedDateMillis != null,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Palette.AccentBlue)
+                ) {
+                    Text(StringResources.ProjectInfoConfirmButton, fontFamily = Roboto)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Palette.AccentBlue)
+                ) {
+                    Text(StringResources.ProjectSprintSubmitCancel, fontFamily = Roboto)
+                }
+            }
+        ) {
+            DatePicker(
+                state = state,
+                modifier = Modifier.fillMaxWidth(),
+                title = {
+                    Text(
+                        text = StringResources.ProjectSprintFieldEndDateLabel,
+                        fontFamily = Roboto,
+                        color = Palette.OnCard,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                    )
+                },
+                headline = null,
+                showModeToggle = false,
+                colors = DatePickerDefaults.colors(
+                    containerColor = Palette.CardSurface,
+                    titleContentColor = Palette.OnCard,
+                    headlineContentColor = Palette.OnCard,
+                    weekdayContentColor = Palette.FieldLabel,
+                    subheadContentColor = Palette.FieldLabel,
+                    yearContentColor = Palette.FieldLabel,
+                    currentYearContentColor = Palette.AccentBlue,
+                    selectedYearContentColor = Palette.ButtonTextOnPrimary,
+                    selectedYearContainerColor = Palette.AccentBlue,
+                    dayContentColor = Palette.OnCard,
+                    disabledDayContentColor = Palette.FieldLabel.copy(alpha = 0.4f),
+                    selectedDayContentColor = Palette.ButtonTextOnPrimary,
+                    disabledSelectedDayContentColor = Palette.ButtonTextOnPrimary.copy(alpha = 0.5f),
+                    selectedDayContainerColor = Palette.AccentBlue,
+                    todayContentColor = Palette.AccentBlue,
+                    todayDateBorderColor = Palette.AccentBlue,
+                    dayInSelectionRangeContentColor = Palette.OnCard,
+                    dayInSelectionRangeContainerColor = Palette.AccentBlue.copy(alpha = 0.18f),
+                    dividerColor = Palette.FieldBorder,
+                    navigationContentColor = Palette.OnCard,
+                )
             )
         }
     }
@@ -1047,6 +1408,27 @@ private fun parseDate(value: String): LocalDate? {
     val month = parts[1].toIntOrNull() ?: return null
     val year = parts[2].toIntOrNull() ?: return null
     return runCatching { LocalDate(year, month, day) }.getOrNull()
+}
+
+@OptIn(kotlin.time.ExperimentalTime::class)
+private fun localDateToPickerUtcMillis(date: LocalDate): Long {
+    // noon UTC avoids edge cases around timezone offsets when converting back to LocalDate
+    val iso = "${date.year.toString().padStart(4, '0')}-${date.monthNumber.toString().padStart(2, '0')}-${date.dayOfMonth.toString().padStart(2, '0')}T12:00:00Z"
+    return Instant.parse(iso).toEpochMilliseconds()
+}
+
+@OptIn(kotlin.time.ExperimentalTime::class)
+private fun formatSprintDateFromPickerMillis(millis: Long): String {
+    val date = Instant.fromEpochMilliseconds(millis)
+        .toLocalDateTime(TimeZone.UTC)
+        .date
+    return buildString {
+        append(date.dayOfMonth.toString().padStart(2, '0'))
+        append('.')
+        append(date.monthNumber.toString().padStart(2, '0'))
+        append('.')
+        append(date.year)
+    }
 }
 
 @OptIn(kotlin.time.ExperimentalTime::class)

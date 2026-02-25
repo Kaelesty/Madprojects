@@ -16,6 +16,7 @@ import ru.kaelesty.madprojects.features.project.domain.FinishSprintUseCase
 import ru.kaelesty.madprojects.features.project.domain.GetProjectKardsUseCase
 import ru.kaelesty.madprojects.features.project.domain.GetProjectActivitiesUseCase
 import ru.kaelesty.madprojects.features.project.domain.GetProjectSprintsUseCase
+import ru.kaelesty.madprojects.features.project.domain.GetProjectUserCommitsAnalyticsUseCase
 import ru.kaelesty.madprojects.features.project.domain.GetSprintUseCase
 import ru.kaelesty.madprojects.features.project.domain.GithubActivityUseCase
 import ru.kaelesty.madprojects.features.project.domain.KanbanSocket
@@ -26,6 +27,7 @@ import ru.kaelesty.madprojects.features.project.ui.ProjectKanbanViewModel
 import ru.kaelesty.madprojects.features.project.ui.ProjectChatViewModel
 import ru.kaelesty.madprojects.features.project.ui.ProjectInfoViewModel
 import ru.kaelesty.madprojects.features.project.ui.ProjectMessengerViewModel
+import ru.kaelesty.madprojects.features.project.ui.ProjectModerationViewModel
 import ru.kaelesty.madprojects.features.project.ui.ProjectSocketViewModel
 import ru.kaelesty.madprojects.features.project.ui.ProjectSprintCreateViewModel
 import ru.kaelesty.madprojects.features.project.ui.ProjectSprintDetailsViewModel
@@ -46,6 +48,7 @@ val projectModule = module {
     single { ProjectSprintsApi(get()) }
     single { GetProjectSprintsUseCase(get(), get()) }
     single { GetProjectActivitiesUseCase(get(), get()) }
+    single { GetProjectUserCommitsAnalyticsUseCase(get(), get()) }
     single { GetSprintUseCase(get(), get()) }
     single { CreateSprintUseCase(get(), get()) }
     single { UpdateSprintUseCase(get(), get()) }
@@ -53,11 +56,12 @@ val projectModule = module {
     single { GetProjectKardsUseCase(get(), get()) }
     viewModel { (projectId: String) -> ProjectViewModel(projectId, get()) }
     viewModel { (projectId: String) -> ProjectInfoViewModel(projectId, get()) }
+    viewModel { (projectId: String) -> ProjectModerationViewModel(projectId, get()) }
     viewModel { (projectId: String) -> ProjectSocketViewModel(projectId, get()) }
     viewModel { (projectId: String) -> ProjectMessengerViewModel(projectId, get()) }
     viewModel { (projectId: String, chatId: Int) -> ProjectChatViewModel(projectId, chatId, get()) }
     viewModel { (projectId: String) -> ProjectKanbanViewModel(projectId, get(), get()) }
-    viewModel { (projectId: String) -> ProjectSprintsViewModel(projectId, get(), get()) }
+    viewModel { (projectId: String) -> ProjectSprintsViewModel(projectId, get(), get(), get()) }
     viewModel { (sprintId: String) -> ProjectSprintDetailsViewModel(sprintId, get(), get()) }
     viewModel { (projectId: String) -> ProjectSprintCreateViewModel(projectId, get(), get()) }
     viewModel { (projectId: String, sprintId: String, sprint: domain.sprints.SprintView) ->

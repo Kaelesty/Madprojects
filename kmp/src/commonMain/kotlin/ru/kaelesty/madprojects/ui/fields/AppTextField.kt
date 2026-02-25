@@ -1,5 +1,6 @@
 package ru.kaelesty.madprojects.ui.fields
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,8 +40,12 @@ fun AppTextField(
     singleLine: Boolean = true,
     minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    readOnly: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(6.dp)
+    val clickInteraction = remember { MutableInteractionSource() }
+    val fieldEnabled = onClick == null
     Column(modifier) {
         Text(
             text = label,
@@ -55,7 +61,19 @@ fun AppTextField(
                 .padding(top = 6.dp)
                 .shadow(2.dp, shape, clip = false)
                 .clip(shape)
-                .border(1.dp, Palette.FieldBorder, shape),
+                .border(1.dp, Palette.FieldBorder, shape)
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(
+                            interactionSource = clickInteraction,
+                            indication = null,
+                            onClick = onClick
+                        )
+                    } else {
+                        Modifier
+                    }
+                ),
+            enabled = fieldEnabled,
             placeholder = {
                 if (placeholder != null) Text(placeholder, color = Palette.FieldPlaceholder, fontFamily = Roboto)
             },
@@ -64,6 +82,7 @@ fun AppTextField(
             minLines = minLines,
             maxLines = maxLines,
             keyboardOptions = keyboardOptions,
+            readOnly = readOnly,
             visualTransformation = VisualTransformation.None,
             shape = shape,
             colors = TextFieldDefaults.colors(
@@ -76,8 +95,10 @@ fun AppTextField(
                 cursorColor = Palette.Cursor,
                 focusedTextColor = Palette.FieldText,
                 unfocusedTextColor = Palette.FieldText,
+                disabledTextColor = Palette.FieldText,
                 focusedPlaceholderColor = Palette.FieldPlaceholder,
-                unfocusedPlaceholderColor = Palette.FieldPlaceholder
+                unfocusedPlaceholderColor = Palette.FieldPlaceholder,
+                disabledPlaceholderColor = Palette.FieldPlaceholder
             )
         )
     }

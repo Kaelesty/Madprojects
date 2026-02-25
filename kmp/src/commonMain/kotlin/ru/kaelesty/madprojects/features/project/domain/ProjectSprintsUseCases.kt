@@ -1,5 +1,6 @@
 package ru.kaelesty.madprojects.features.project.domain
 
+import domain.CommiterModel
 import domain.sprints.ProfileSprint
 import domain.sprints.SprintView
 import io.ktor.http.HttpStatusCode
@@ -80,6 +81,44 @@ class GetProjectActivitiesUseCase(
 
     private companion object {
         private const val TAG = "GetProjectActivitiesUseCase"
+    }
+}
+
+class GetProjectUserCommitsAnalyticsUseCase(
+    private val api: ProjectSprintsApi,
+    private val authContext: AuthContext,
+) {
+    suspend fun load(projectId: String): Result {
+        KLogger.d(TAG) { "load project user commits analytics start: projectId=$projectId" }
+        val accessToken = authContext.getAccessToken() ?: run {
+            KLogger.w(TAG) { "load project user commits analytics failed: access token missing" }
+            return Result.Fail(null, null)
+        }
+        val response = api.getProjectUserCommitsAnalytics(accessToken, projectId) ?: run {
+            KLogger.w(TAG) { "load project user commits analytics failed: response is null" }
+            return Result.Fail(null, null)
+        }
+        if (response.status == HttpStatusCode.OK) {
+            val body = response.body ?: run {
+                KLogger.w(TAG) { "load project user commits analytics failed: body missing" }
+                return Result.Fail(response.status, response.errorMessage)
+            }
+            KLogger.i(TAG) { "load project user commits analytics success: users=${body.size}" }
+            return Result.Success(body)
+        }
+        KLogger.w(TAG) {
+            "load project user commits analytics failed: status=${response.status} message=${response.errorMessage}"
+        }
+        return Result.Fail(response.status, response.errorMessage)
+    }
+
+    sealed interface Result {
+        data class Success(val commiters: List<CommiterModel>) : Result
+        data class Fail(val status: HttpStatusCode?, val message: String?) : Result
+    }
+
+    private companion object {
+        private const val TAG = "GetProjectUserCommitsAnalyticsUseCase"
     }
 }
 

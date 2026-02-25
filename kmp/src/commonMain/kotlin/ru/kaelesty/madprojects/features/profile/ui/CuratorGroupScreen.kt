@@ -2,6 +2,7 @@ package ru.kaelesty.madprojects.features.profile.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -40,6 +43,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import domain.projectgroups.ProjectInGroupView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
@@ -52,9 +58,21 @@ import ru.kaelesty.madprojects.ui.theme.Roboto
 fun CuratorGroupScreen(
     groupId: String,
     onBack: () -> Unit,
+    onProjectClick: (String) -> Unit,
 ) {
     val vm = koinViewModel<CuratorGroupViewModel>(parameters = { parametersOf(groupId) })
     val state by vm.state.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, vm) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                vm.refreshSilently()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val loadedState = state as? CuratorGroupViewModel.State.Loaded
     val headerTitle = loadedState?.groupTitle ?: StringResources.CuratorGroupScreenTitle
@@ -123,6 +141,7 @@ fun CuratorGroupScreen(
                             projects = current.pendingProjects,
                             accentColor = Palette.AccentRed,
                             emptyText = null,
+                            onProjectClick = onProjectClick,
                         )
                     }
                     CuratorGroupProjectsCard(
@@ -130,6 +149,7 @@ fun CuratorGroupScreen(
                         projects = current.approvedProjects,
                         accentColor = Palette.AccentBlue,
                         emptyText = StringResources.CuratorGroupApprovedProjectsEmpty,
+                        onProjectClick = onProjectClick,
                     )
                 }
             }
@@ -261,6 +281,7 @@ private fun CuratorGroupProjectsCard(
     projects: List<ProjectInGroupView>,
     accentColor: Color,
     emptyText: String?,
+    onProjectClick: (String) -> Unit,
 ) {
     ProfileCard {
         Row(
@@ -321,7 +342,8 @@ private fun CuratorGroupProjectsCard(
                 projects.forEach { project ->
                     CuratorGroupProjectItem(
                         project = project,
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        onClick = { onProjectClick(project.id) }
                     )
                 }
             }
@@ -353,6 +375,7 @@ private fun SectionCountBadge(
 private fun CuratorGroupProjectItem(
     project: ProjectInGroupView,
     accentColor: Color,
+    onClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -363,8 +386,9 @@ private fun CuratorGroupProjectItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 62.dp)
-                .padding(horizontal = 10.dp, vertical = 10.dp),
+                .requiredHeight(44.dp)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -377,7 +401,7 @@ private fun CuratorGroupProjectItem(
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = project.title,
@@ -388,13 +412,6 @@ private fun CuratorGroupProjectItem(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    MetaPill(text = "${StringResources.CuratorGroupProjectMetaPrefix}${project.members.size}")
-                    MetaPill(text = project.createDate)
-                }
             }
 
             project.mark?.let { mark ->
@@ -437,4 +454,3 @@ private fun MetaPill(
         )
     }
 }
-

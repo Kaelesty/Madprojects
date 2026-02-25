@@ -90,6 +90,20 @@ class ProjectInfoUseCase(
         return actionResult("deleteProject", response)
     }
 
+    suspend fun approveProject(projectId: String): ActionResult {
+        KLogger.d(TAG) { "approveProject start: projectId=$projectId" }
+        val accessToken = authContext.getAccessToken() ?: return actionAuthFail("approveProject")
+        val response = api.approveProject(accessToken, projectId) ?: return actionNullFail("approveProject")
+        return actionResult("approveProject", response)
+    }
+
+    suspend fun disapproveProject(projectId: String, message: String): ActionResult {
+        KLogger.d(TAG) { "disapproveProject start: projectId=$projectId messageLength=${message.length}" }
+        val accessToken = authContext.getAccessToken() ?: return actionAuthFail("disapproveProject")
+        val response = api.disapproveProject(accessToken, projectId, message) ?: return actionNullFail("disapproveProject")
+        return actionResult("disapproveProject", response)
+    }
+
     sealed interface ProjectResult {
         data class Success(val project: Project) : ProjectResult
         data class Fail(val status: HttpStatusCode?, val message: String?) : ProjectResult

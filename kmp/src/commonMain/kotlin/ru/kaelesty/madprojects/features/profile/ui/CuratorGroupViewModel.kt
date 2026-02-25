@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import domain.projectgroups.ProjectInGroupView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.kaelesty.madprojects.features.profile.domain.GetCuratorGroupProjectsUseCase
 import ru.kaelesty.madprojects.ui.strings.StringResources
@@ -28,6 +29,7 @@ class CuratorGroupViewModel(
 
     private val _state = MutableStateFlow<State>(State.Loading)
     val state = _state.asStateFlow()
+    private var isLoadInProgress = false
 
     init {
         KLogger.d(TAG) { "init: load groupId=$groupId" }
@@ -35,8 +37,27 @@ class CuratorGroupViewModel(
     }
 
     fun load() {
-        KLogger.d(TAG) { "load start: groupId=$groupId" }
-        _state.value = State.Loading
+        request(showLoading = true)
+    }
+
+    fun refreshSilently() {
+        request(showLoading = false)
+    }
+
+    private fun request(showLoading: Boolean) {
+        if (isLoadInProgress) {
+            KLogger.d(TAG) { "request skipped: already in progress, showLoading=$showLoading" }
+            return
+        }
+        val hasLoadedContent = _state.value is State.Loaded
+        val shouldShowLoading = showLoading || !hasLoadedContent
+        KLogger.d(TAG) {
+            "request start: groupId=$groupId showLoading=$showLoading hasLoadedContent=$hasLoadedContent -> shouldShowLoading=$shouldShowLoading"
+        }
+        if (shouldShowLoading) {
+            _state.value = State.Loading
+        }
+        isLoadInProgress = true
         viewModelScope.launch {
             when (val result = useCase.load(groupId)) {
                 is GetCuratorGroupProjectsUseCase.Result.Success -> {
@@ -45,13 +66,21 @@ class CuratorGroupViewModel(
                         pendingProjects = result.pendingProjects,
                         approvedProjects = result.approvedProjects,
                     )
+                    KLogger.i(TAG) {
+                        "request success: pending=${result.pendingProjects.size} approved=${result.approvedProjects.size}"
+                    }
                 }
                 is GetCuratorGroupProjectsUseCase.Result.Fail -> {
                     val message = result.message?.takeIf { it.isNotBlank() } ?: str.LoadError
-                    KLogger.w(TAG) { "load failed: $message" }
-                    _state.value = State.Error(message)
+                    if (shouldShowLoading) {
+                        KLogger.w(TAG) { "request failed (visible): $message" }
+                        _state.value = State.Error(message)
+                    } else {
+                        KLogger.w(TAG) { "request failed (silent): $message" }
+                    }
                 }
             }
+            isLoadInProgress = false
         }
     }
 
@@ -59,4 +88,3 @@ class CuratorGroupViewModel(
         private const val TAG = "CuratorGroupViewModel"
     }
 }
-

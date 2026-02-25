@@ -52,6 +52,7 @@ class CuratorProfileViewModel(
 
     private val _deleteGroupDialogState = MutableStateFlow(DeleteGroupDialogState())
     val deleteGroupDialogState = _deleteGroupDialogState.asStateFlow()
+    private var isLoadInProgress = false
 
     init {
         KLogger.d(TAG) { "init: loading curator profile" }
@@ -59,20 +60,44 @@ class CuratorProfileViewModel(
     }
 
     fun load() {
-        KLogger.d(TAG) { "load start" }
-        _state.value = State.Loading
+        request(showLoading = true)
+    }
+
+    fun refreshSilently() {
+        request(showLoading = false)
+    }
+
+    private fun request(showLoading: Boolean) {
+        if (isLoadInProgress) {
+            KLogger.d(TAG) { "request skipped: already in progress, showLoading=$showLoading" }
+            return
+        }
+        val hasLoadedContent = _state.value is State.Loaded
+        val shouldShowLoading = showLoading || !hasLoadedContent
+        KLogger.d(TAG) {
+            "request start: showLoading=$showLoading hasLoadedContent=$hasLoadedContent -> shouldShowLoading=$shouldShowLoading"
+        }
+        if (shouldShowLoading) {
+            _state.value = State.Loading
+        }
+        isLoadInProgress = true
         viewModelScope.launch {
             when (val result = getCuratorProfileUseCase.load()) {
                 is GetCuratorProfileUseCase.Result.Success -> {
-                    KLogger.i(TAG) { "load success: groups=${result.profile.projectGroups.size}" }
+                    KLogger.i(TAG) { "request success: groups=${result.profile.projectGroups.size}" }
                     _state.value = State.Loaded(result.profile)
                 }
                 is GetCuratorProfileUseCase.Result.Fail -> {
                     val message = result.message?.takeIf { it.isNotBlank() } ?: str.LoadError
-                    KLogger.w(TAG) { "load failed: $message" }
-                    _state.value = State.Error(message)
+                    if (shouldShowLoading) {
+                        KLogger.w(TAG) { "request failed (visible): $message" }
+                        _state.value = State.Error(message)
+                    } else {
+                        KLogger.w(TAG) { "request failed (silent): $message" }
+                    }
                 }
             }
+            isLoadInProgress = false
         }
     }
 

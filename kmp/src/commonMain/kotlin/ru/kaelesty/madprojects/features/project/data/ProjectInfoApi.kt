@@ -14,6 +14,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import kotlinx.serialization.Serializable
 import ru.kaelesty.madprojects.api.invites.ProjectInviteResponse
 import ru.kaelesty.madprojects.api.project.UpdateProjectMetaRequest
 import ru.kaelesty.madprojects.utils.KLogger
@@ -172,6 +173,37 @@ class ProjectInfoApi(
         }
     }
 
+    suspend fun approveProject(accessToken: String, projectId: String): SimpleResponse? {
+        return runCatching {
+            val response = client.post(CuratorshipApprovePath) {
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
+                parameter(ProjectIdParam, projectId)
+                expectSuccess = false
+            }
+            KLogger.d(TAG) { "Approve project response status=${response.status}" }
+            SimpleResponse(response.status, response.errorBodyOrNull())
+        }.getOrElse {
+            KLogger.e(TAG, it) { "Approve project request failed" }
+            null
+        }
+    }
+
+    suspend fun disapproveProject(accessToken: String, projectId: String, message: String): SimpleResponse? {
+        return runCatching {
+            val response = client.post(CuratorshipDisapprovePath) {
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
+                contentType(ContentType.Application.Json)
+                setBody(DisapproveProjectRequest(projectId = projectId, message = message))
+                expectSuccess = false
+            }
+            KLogger.d(TAG) { "Disapprove project response status=${response.status}" }
+            SimpleResponse(response.status, response.errorBodyOrNull())
+        }.getOrElse {
+            KLogger.e(TAG, it) { "Disapprove project request failed" }
+            null
+        }
+    }
+
     data class ProjectResponse(
         val status: HttpStatusCode,
         val project: Project? = null,
@@ -202,6 +234,8 @@ class ProjectInfoApi(
         private const val ProjectRepoAddPath = "/project/repo/add"
         private const val ProjectRepoRemovePath = "/project/repo/remove"
         private const val ProjectDeletePath = "/project/delete"
+        private const val CuratorshipApprovePath = "/curatorship/approve"
+        private const val CuratorshipDisapprovePath = "/curatorship/disapprove"
         private const val InvitesGetPath = "/invites/get"
         private const val InvitesRefreshPath = "/invites/refresh"
 
@@ -211,3 +245,9 @@ class ProjectInfoApi(
         private const val RepoLinkParam = "repoLink"
     }
 }
+
+@Serializable
+private data class DisapproveProjectRequest(
+    val projectId: String,
+    val message: String,
+)

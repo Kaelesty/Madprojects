@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import domain.auth.UserType
 import domain.project.Project
 import domain.project.ProjectMember
 import domain.project.ProjectRepository
@@ -55,6 +56,7 @@ import domain.project.ProjectStatus
 import kotlinx.coroutines.flow.collect
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
 import ru.kaelesty.madprojects.ui.cards.ProfileCard
 import ru.kaelesty.madprojects.ui.fields.AppTextField
@@ -66,6 +68,7 @@ import ru.kaelesty.madprojects.utils.KLogger
 @Composable
 fun ProjectInfoScreen(
     projectId: String,
+    authContext: AuthContext,
     onProjectDeleted: () -> Unit,
 ) {
     val vm = koinViewModel<ProjectInfoViewModel>(parameters = { parametersOf(projectId) })
@@ -74,8 +77,10 @@ fun ProjectInfoScreen(
     val inviteState by vm.inviteDialogState.collectAsState()
     val repoState by vm.repoDialogState.collectAsState()
     val deleteState by vm.deleteProjectDialogState.collectAsState()
+    val userType by authContext.userType.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
+    val canManageAsCurator = userType == UserType.Curator
     var inviteCopied by remember(inviteState.isOpen) { mutableStateOf(false) }
     var pendingMemberDelete by remember { mutableStateOf<ProjectMember?>(null) }
     var pendingRepoDelete by remember { mutableStateOf<ProjectRepository?>(null) }
@@ -334,6 +339,7 @@ fun ProjectInfoScreen(
                     ProjectInfoContent(
                         project = project,
                         ui = ui,
+                        canManageProject = project.isCreator || canManageAsCurator,
                         onOpenRepo = { link -> runCatching { uriHandler.openUri(link) }.onFailure { KLogger.e(TAG, it) { "openUri failed" } } },
                         onInvite = vm::openInviteDialog,
                         onEditMeta = vm::openEditMetaDialog,
@@ -360,6 +366,7 @@ fun ProjectInfoScreen(
 private fun ProjectInfoContent(
     project: Project,
     ui: ProjectInfoViewModel.UiState,
+    canManageProject: Boolean,
     onOpenRepo: (String) -> Unit,
     onInvite: () -> Unit,
     onEditMeta: () -> Unit,
@@ -385,7 +392,7 @@ private fun ProjectInfoContent(
 
     ProfileCard {
         CardTitle(StringResources.ProjectInfoSectionTeam) {
-            if (project.isCreator) {
+            if (canManageProject) {
                 IconButton(onClick = onInvite) { Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = Palette.OnCard) }
             }
         }
@@ -399,7 +406,7 @@ private fun ProjectInfoContent(
                     if (index == 0) {
                         Text(StringResources.ProjectInfoCreatorBadge, color = Palette.FieldLabel, fontFamily = Roboto, fontSize = 12.sp)
                     }
-                    if (project.isCreator && index != 0) {
+                    if (canManageProject && index != 0) {
                         Spacer(Modifier.width(6.dp))
                         if (member.id in ui.removingMemberIds) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Palette.AccentBlue)
@@ -411,7 +418,7 @@ private fun ProjectInfoContent(
                 if (index < project.members.lastIndex) ThinDivider()
             }
         }
-        if (project.isCreator) {
+        if (canManageProject) {
             if (project.members.isNotEmpty()) ThinDivider()
             Row(
                 modifier = Modifier
@@ -434,7 +441,7 @@ private fun ProjectInfoContent(
 
     ProfileCard {
         CardTitle(StringResources.ProjectInfoSectionRepositories) {
-            if (project.isCreator) {
+            if (canManageProject) {
                 IconButton(onClick = onAddRepo) { Icon(Icons.Filled.Add, contentDescription = null, tint = Palette.OnCard) }
             }
         }
@@ -450,7 +457,7 @@ private fun ProjectInfoContent(
                         Text((repo.title.takeIf { it.isNotBlank() } ?: repo.link.substringAfterLast('/')), color = Palette.OnCard, fontFamily = Roboto, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         Text(repo.link, color = Palette.FieldLabel, fontFamily = Roboto, fontSize = 12.sp)
                     }
-                    if (project.isCreator) {
+                    if (canManageProject) {
                         Spacer(Modifier.width(6.dp))
                         if (repo.id in ui.removingRepoIds) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Palette.AccentBlue)
@@ -462,7 +469,7 @@ private fun ProjectInfoContent(
                 if (index < project.repos.lastIndex) ThinDivider()
             }
         }
-        if (project.isCreator) {
+        if (canManageProject) {
             if (project.repos.isNotEmpty()) ThinDivider()
             Row(
                 modifier = Modifier
@@ -483,7 +490,7 @@ private fun ProjectInfoContent(
         }
     }
 
-    if (project.isCreator) {
+    if (canManageProject) {
         ProfileCard {
             SectionHeader(StringResources.ProjectInfoSectionSettings)
             ui.settingsActionError?.let { InlineError(it, onDismissSettingsError) }

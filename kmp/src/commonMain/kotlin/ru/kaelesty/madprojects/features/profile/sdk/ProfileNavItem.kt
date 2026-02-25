@@ -52,7 +52,8 @@ class ProfileNavItem(
             val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
             CuratorGroupScreen(
                 groupId = groupId,
-                onBack = navigator::back
+                onBack = navigator::back,
+                onProjectClick = navigator::toProject,
             )
         }
     }

@@ -1,5 +1,6 @@
 package ru.kaelesty.madprojects.features.project.data
 
+import domain.CommiterModel
 import io.ktor.client.call.body
 import domain.sprints.ProfileSprint
 import domain.sprints.SprintView
@@ -220,6 +221,38 @@ class ProjectSprintsApi(
         }
     }
 
+    suspend fun getProjectUserCommitsAnalytics(
+        accessToken: String,
+        projectId: String,
+    ): ProjectUserCommitsAnalyticsResponse? {
+        return runCatching {
+            val response = client.get(ProjectUserCommitsAnalyticsPath) {
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
+                parameter(ProjectIdParam, projectId)
+                expectSuccess = false
+            }
+            KLogger.d(TAG) { "Project user commits analytics response status=${response.status}" }
+            val body = if (response.status == HttpStatusCode.OK) {
+                response.body<List<CommiterModel>>()
+            } else {
+                null
+            }
+            val errorMessage = if (response.status != HttpStatusCode.OK) {
+                response.bodyAsText().trim().takeIf { it.isNotEmpty() }
+            } else {
+                null
+            }
+            ProjectUserCommitsAnalyticsResponse(
+                status = response.status,
+                body = body,
+                errorMessage = errorMessage,
+            )
+        }.getOrElse {
+            KLogger.e(TAG, it) { "Project user commits analytics request failed" }
+            null
+        }
+    }
+
     data class ProjectSprintsResponse(
         val status: HttpStatusCode,
         val sprints: List<ProfileSprint>? = null,
@@ -255,6 +288,12 @@ class ProjectSprintsApi(
         val errorMessage: String? = null,
     )
 
+    data class ProjectUserCommitsAnalyticsResponse(
+        val status: HttpStatusCode,
+        val body: List<CommiterModel>? = null,
+        val errorMessage: String? = null,
+    )
+
     private companion object {
         private const val TAG = "ktor-ProjectSprintsApi"
         private const val SprintsListPath = "/sprint/getListByProject"
@@ -264,6 +303,7 @@ class ProjectSprintsApi(
         private const val SprintDetailsPath = "/sprint/get"
         private const val ProjectKardsPath = "/project/kards"
         private const val ProjectActivitiesPath = "/project/activity/get"
+        private const val ProjectUserCommitsAnalyticsPath = "/analytics/userCommits"
         private const val ProjectIdParam = "projectId"
         private const val SprintIdParam = "sprintId"
         private const val CountParam = "count"
