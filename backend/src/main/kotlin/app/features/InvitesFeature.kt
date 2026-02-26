@@ -1,5 +1,6 @@
 package app.features
 
+import app.LogManager
 import domain.InvitesRepo
 import domain.activity.ActivityRepo
 import domain.activity.ActivityType
@@ -79,8 +80,12 @@ class InvitesFeatureImpl(
             val principal = call.principal<JWTPrincipal>()
             val userId = principal!!.payload.getClaim("userId").asString()
             val invite = call.parameters["invite"]
+            LogManager.emitError(
+                "InvitesFeature.useInvite request: userId=$userId inviteLength=${invite?.length ?: 0}"
+            )
 
             if (invite == null) {
+                LogManager.emitError("InvitesFeature.useInvite missing invite: userId=$userId")
                 call.respond(HttpStatusCode.NotFound)
                 return
             }
@@ -88,6 +93,9 @@ class InvitesFeatureImpl(
             val projectId = invitesRepo.useInvite(invite, userId)
 
             if (projectId == null) {
+                LogManager.emitError(
+                    "InvitesFeature.useInvite failed: userId=$userId inviteLength=${invite.length} projectId=null"
+                )
                 call.respond(HttpStatusCode.NotFound)
                 return
             }
@@ -100,6 +108,10 @@ class InvitesFeatureImpl(
                 targetTitle = if (memberProfile != null) "${memberProfile.lastName} ${memberProfile.firstName}" else "",
                 targetId = userId,
                 type = ActivityType.MemberAdd
+            )
+
+            LogManager.emitError(
+                "InvitesFeature.useInvite success: userId=$userId projectId=$projectId"
             )
 
             call.respondText(

@@ -121,6 +121,7 @@ val featuresModule = module {
     single<ProjectsFeature> {
         ProjectsFeatureImpl(
             projectRepo = get(),
+            projectsGroupRepo = get(),
             repositoriesRepo = get(),
             activityRepo = get(),
             profileRepo = get(),

@@ -8,6 +8,7 @@ import domain.profile.ProfileRepo
 import domain.project.CreateProjectRequest
 import domain.project.CreateProjectResponse
 import domain.project.ProjectRepo
+import domain.projectgroups.ProjectsGroupRepo
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -44,6 +45,7 @@ interface ProjectsFeature {
 
 class ProjectsFeatureImpl(
     private val projectRepo: ProjectRepo,
+    private val projectsGroupRepo: ProjectsGroupRepo,
     private val repositoriesRepo: RepositoriesRepo,
     private val activityRepo: ActivityRepo,
     private val profileRepo: ProfileRepo,
@@ -83,9 +85,24 @@ class ProjectsFeatureImpl(
             val userId = principal!!.payload.getClaim("userId").asString()
             val memberId = call.parameters["memberId"]
             val projectId = call.parameters["projectId"]
+            val canManageMembers = if (projectId == null) {
+                false
+            } else {
+                val isCreator = projectRepo.checkUserIsCreator(userId, projectId)
+                if (isCreator) {
+                    true
+                } else {
+                    val groupId = runCatching { projectsGroupRepo.getGroupId(projectId) }.getOrNull()
+                    if (groupId == null) {
+                        false
+                    } else {
+                        projectsGroupRepo.checkIsCuratorGroupOwner(userId, groupId)
+                    }
+                }
+            }
             if (
                 projectId == null || memberId == null
-                || !projectRepo.checkUserIsCreator(userId, projectId)
+                || !canManageMembers
                 || projectRepo.checkUserIsCreator(memberId, projectId)
             ) {
                 call.respond(HttpStatusCode.NotFound)
