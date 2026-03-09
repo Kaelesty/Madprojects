@@ -8,6 +8,7 @@ import data.schemas.ProjectService
 import data.schemas.UserService
 import domain.project.ProjectStatus
 import domain.projectgroups.ProjectGroup
+import domain.projectgroups.ProjectInGroupAnalyticsView
 import domain.projectgroups.ProjectInGroupMember
 import domain.projectgroups.ProjectInGroupView
 import domain.projectgroups.ProjectsGroupRepo
@@ -206,6 +207,32 @@ class ProjectGroupsRepoImpl(
                     groupId = group.id,
                 )
             }
+    }
+
+    override suspend fun getGroupProjectsAnalytics(groupId: String): List<ProjectInGroupAnalyticsView> {
+        return projectGroupsService.dbQuery {
+            val pc = ProjectCuratorshipService.ProjectsCuratorship
+            val projects = ProjectService.Projects
+
+            (pc innerJoin projects)
+                .selectAll()
+                .where {
+                    (pc.projectGroupId eq groupId.toInt()) and
+                        (
+                            (projects.isDeleted eq false) or
+                                projects.isDeleted.isNull()
+                            )
+                }
+                .orderBy(pc.projectId to SortOrder.ASC)
+                .map { row ->
+                    ProjectInGroupAnalyticsView(
+                        id = row[pc.projectId].toString(),
+                        title = row[projects.title],
+                        status = row[pc.status],
+                        mark = row[pc.mark],
+                    )
+                }
+        }
     }
 
     override suspend fun deleteProjectGroup(id: String): Boolean {

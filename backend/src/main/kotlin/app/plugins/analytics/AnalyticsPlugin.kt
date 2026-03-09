@@ -169,7 +169,7 @@ class AnalyticsPlugin(
             return@get
         }
 
-        val response = projectGroupsRepo.getGroupProjects(groupId)
+        val response = projectGroupsRepo.getGroupProjectsAnalytics(groupId)
             .map {
                 ProjectWithCommitsCount(
                     id = it.id,
@@ -218,7 +218,7 @@ class AnalyticsPlugin(
             return@get
         }
 
-        val response = projectGroupsRepo.getGroupProjects(groupId)
+        val response = projectGroupsRepo.getGroupProjectsAnalytics(groupId)
             .map {
                 ProjectWithMark(
                     id = it.id,
@@ -276,11 +276,10 @@ class AnalyticsPlugin(
             call.respond(HttpStatusCode.Companion.NotFound)
             return@get
         }
-        val projectIds = projectGroupsRepo.getGroupProjects(groupId).map { it.id }
-        val projectStatuses = projectIds.map {
+        val projectStatuses = projectGroupsRepo.getGroupProjectsAnalytics(groupId).map {
             ProjectTitleToId(
-                title = projectRepo.getProjectTitle(it),
-                statusName = projectRepo.getProjectStatus(it).name
+                title = it.title,
+                statusName = it.status.name
             )
         }
 
