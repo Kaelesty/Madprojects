@@ -84,18 +84,16 @@ class ProjectGroupsFeatureImpl(
             }
             val marked = call.parameters["marked"]?.let { it == "true" }
             val mark = call.parameters["mark"]?.let {
-                if (it == "null") null else it
+                if (it == "null") null else it.toInt()
             }
 
-            val projects = if(projectGroupId != null) {
-                projectsGroupRepo.getGroupProjects(projectGroupId)
-            } else {
-                projectsGroupRepo.getCuratorProjectGroups(userId)
-                    .flatMap { projectsGroupRepo.getGroupProjects(it.id) }
-            }
-                .filter { (marked == null || (marked == true && it.mark != null) || (marked == false && it.mark == null)) }
-                .filter { mark == null || (it.mark == mark.toInt()) }
-                .filter { (status == null) || (status == it.status) }
+            val projects = projectsGroupRepo.getCuratorProjects(
+                curatorId = userId,
+                projectGroupId = projectGroupId,
+                status = status,
+                marked = marked,
+                mark = mark,
+            )
 
             call.respondText(
                 text = Json.encodeToString(projects),
