@@ -82,7 +82,14 @@ class ProjectGroupsFeatureImpl(
             val status = call.parameters["status"]?.let {
                 if (it == "null") null else ProjectStatus.valueOf(it)
             }
-            val marked = call.parameters["marked"]?.let { it == "true" }
+            val marked = call.parameters["marked"]?.let {
+                when (it) {
+                    "null" -> null
+                    "true" -> true
+                    "false" -> false
+                    else -> null
+                }
+            }
             val mark = call.parameters["mark"]?.let {
                 if (it == "null") null else it.toInt()
             }

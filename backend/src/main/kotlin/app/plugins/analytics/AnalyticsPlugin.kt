@@ -19,7 +19,6 @@ import io.ktor.server.routing.get
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import ru.kaelesty.madprojects.api.analytics.MemberWithMark
-import ru.kaelesty.madprojects.api.analytics.ProjectCommits
 import ru.kaelesty.madprojects.api.analytics.ProjectTitleToId
 import ru.kaelesty.madprojects.api.analytics.ProjectWithCommitsCount
 import ru.kaelesty.madprojects.api.analytics.ProjectWithMark
@@ -38,6 +37,7 @@ class AnalyticsPlugin(
         getProjectStatusesInProjectGroupByProject()
         getUserCommits()
         getProjectGroupCommits()
+        getProjectCommitsCount()
         getGroupMarks()
         getProjectGroupMarks()
     }
@@ -164,12 +164,6 @@ class AnalyticsPlugin(
         val userId = principal!!.payload.getClaim("userId").asString()
         val groupId = call.parameters["groupId"]
 
-        val githubToken = tokenUtil.getGithubAccessToken(userId)
-        if (githubToken == null) {
-            call.respond(HttpStatusCode.Companion.TooEarly)
-            return@get
-        }
-
         if (groupId == null || !projectGroupsRepo.checkIsCuratorGroupOwner(userId, groupId)) {
             call.respond(HttpStatusCode.Companion.NotFound)
             return@get
@@ -180,7 +174,7 @@ class AnalyticsPlugin(
                 ProjectWithCommitsCount(
                     id = it.id,
                     title = it.title,
-                    count = branchesRepo.getCommitsCount(it.id, githubToken).sumOf { it.commitsCount },
+                    count = 0,
                 )
             }
 
@@ -232,6 +226,39 @@ class AnalyticsPlugin(
                     mark = it.mark,
                 )
             }
+
+        call.respondText(
+            text = Json.Default.encodeToString(response),
+            status = HttpStatusCode.Companion.OK,
+            contentType = ContentType.Application.Json,
+        )
+    }
+
+    private fun Route.getProjectCommitsCount() = get("/analytics/projectCommitsCount") {
+        val principal = call.principal<JWTPrincipal>()
+        val userId = principal!!.payload.getClaim("userId").asString()
+        val projectId = call.parameters["projectId"]
+
+        if (projectId == null) {
+            call.respond(HttpStatusCode.Companion.NotFound)
+            return@get
+        }
+
+        val groupId = runCatching { projectGroupsRepo.getGroupId(projectId) }.getOrNull()
+        if (groupId == null || !projectGroupsRepo.checkIsCuratorGroupOwner(userId, groupId)) {
+            call.respond(HttpStatusCode.Companion.NotFound)
+            return@get
+        }
+
+        val githubToken = tokenUtil.getGithubAccessToken(userId)
+        if (githubToken == null) {
+            call.respond(HttpStatusCode.Companion.TooEarly)
+            return@get
+        }
+
+        val response = mapOf(
+            "count" to branchesRepo.getCommitsCount(projectId, githubToken).sumOf { it.commitsCount }
+        )
 
         call.respondText(
             text = Json.Default.encodeToString(response),
