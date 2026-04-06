@@ -173,6 +173,22 @@ class ProjectInfoApi(
         }
     }
 
+    suspend fun setProjectMark(accessToken: String, projectId: String, mark: Int): SimpleResponse? {
+        return runCatching {
+            val response = client.post(ProjectMarkSetPath) {
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
+                parameter(ProjectIdParam, projectId)
+                parameter(MarkParam, mark)
+                expectSuccess = false
+            }
+            KLogger.d(TAG) { "Set project mark response status=${response.status}" }
+            SimpleResponse(response.status, response.errorBodyOrNull())
+        }.getOrElse {
+            KLogger.e(TAG, it) { "Set project mark request failed" }
+            null
+        }
+    }
+
     suspend fun approveProject(accessToken: String, projectId: String): SimpleResponse? {
         return runCatching {
             val response = client.post(CuratorshipApprovePath) {
@@ -234,12 +250,14 @@ class ProjectInfoApi(
         private const val ProjectRepoAddPath = "/project/repo/add"
         private const val ProjectRepoRemovePath = "/project/repo/remove"
         private const val ProjectDeletePath = "/project/delete"
+        private const val ProjectMarkSetPath = "/project/mark/set"
         private const val CuratorshipApprovePath = "/curatorship/approve"
         private const val CuratorshipDisapprovePath = "/curatorship/disapprove"
         private const val InvitesGetPath = "/invites/get"
         private const val InvitesRefreshPath = "/invites/refresh"
 
         private const val ProjectIdParam = "projectId"
+        private const val MarkParam = "mark"
         private const val MemberIdParam = "memberId"
         private const val RepoIdParam = "repoId"
         private const val RepoLinkParam = "repoLink"

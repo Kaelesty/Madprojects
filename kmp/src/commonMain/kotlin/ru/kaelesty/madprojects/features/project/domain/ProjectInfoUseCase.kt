@@ -90,6 +90,13 @@ class ProjectInfoUseCase(
         return actionResult("deleteProject", response)
     }
 
+    suspend fun setProjectMark(projectId: String, mark: Int): ActionResult {
+        KLogger.d(TAG) { "setProjectMark start: projectId=$projectId mark=$mark" }
+        val accessToken = authContext.getAccessToken() ?: return actionAuthFail("setProjectMark")
+        val response = api.setProjectMark(accessToken, projectId, mark) ?: return actionNullFail("setProjectMark")
+        return actionResult("setProjectMark", response)
+    }
+
     suspend fun approveProject(projectId: String): ActionResult {
         KLogger.d(TAG) { "approveProject start: projectId=$projectId" }
         val accessToken = authContext.getAccessToken() ?: return actionAuthFail("approveProject")

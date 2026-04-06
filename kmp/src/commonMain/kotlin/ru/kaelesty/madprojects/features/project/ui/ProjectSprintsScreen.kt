@@ -161,78 +161,81 @@ private fun SprintsListContent(
     onRetry: () -> Unit,
     onRetryAnalytics: () -> Unit,
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .widthIn(min = 280.dp, max = 420.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AnalyticsCommitsCard(
-            state = analyticsState,
-            onRetry = onRetryAnalytics,
-        )
-
-        ActivityFeedCard(
-            state = activityState,
-            onRetry = onRetry,
-            onOpenSprint = onOpenSprint,
-            onOpenRepo = onOpenRepo
-        )
-
-        SectionHeader(
-            title = StringResources.ProjectSprintsTitle,
-            actionIcon = Icons.Filled.Add,
-            actionDescription = StringResources.ProjectSprintsCreate,
-            onActionClick = onCreate
-        )
+        item {
+            AnalyticsCommitsCard(
+                state = analyticsState,
+                onRetry = onRetryAnalytics,
+            )
+        }
+        item {
+            ActivityFeedCard(
+                state = activityState,
+                onRetry = onRetry,
+                onOpenSprint = onOpenSprint,
+                onOpenRepo = onOpenRepo
+            )
+        }
+        item {
+            SectionHeader(
+                title = StringResources.ProjectSprintsTitle,
+                actionIcon = Icons.Filled.Add,
+                actionDescription = StringResources.ProjectSprintsCreate,
+                onActionClick = onCreate
+            )
+        }
 
         when (state) {
             ProjectSprintsViewModel.State.Loading -> {
-                ProfileCard {
-                    RowWithLoader(text = StringResources.ProjectSprintsLoading)
+                item {
+                    ProfileCard {
+                        RowWithLoader(text = StringResources.ProjectSprintsLoading)
+                    }
                 }
             }
             is ProjectSprintsViewModel.State.Error -> {
-                ProfileCard {
-                    Text(
-                        text = state.message ?: StringResources.ProjectSprintsError,
-                        color = MaterialTheme.colorScheme.error,
-                        fontFamily = Roboto,
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    PrimaryActionButton(
-                        text = StringResources.RetryButton,
-                        onClick = onRetry,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-            is ProjectSprintsViewModel.State.Loaded -> {
-                if (state.sprints.isEmpty()) {
+                item {
                     ProfileCard {
                         Text(
-                            text = StringResources.ProjectSprintsEmpty,
-                            color = Palette.FieldLabel,
+                            text = state.message ?: StringResources.ProjectSprintsError,
+                            color = MaterialTheme.colorScheme.error,
                             fontFamily = Roboto,
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(Modifier.height(12.dp))
+                        PrimaryActionButton(
+                            text = StringResources.RetryButton,
+                            onClick = onRetry,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+            is ProjectSprintsViewModel.State.Loaded -> {
+                if (state.sprints.isEmpty()) {
+                    item {
+                        ProfileCard {
+                            Text(
+                                text = StringResources.ProjectSprintsEmpty,
+                                color = Palette.FieldLabel,
+                                fontFamily = Roboto,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(state.sprints) { sprint ->
-                            SprintCard(sprint = sprint, onClick = { onOpenSprint(sprint.id) })
-                        }
+                    items(state.sprints) { sprint ->
+                        SprintCard(sprint = sprint, onClick = { onOpenSprint(sprint.id) })
                     }
                 }
             }

@@ -12,7 +12,9 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.ContentType
+import domain.projectgroups.ProjectGroup
 import ru.kaelesty.madprojects.api.projectgroups.GroupProjectsResponse
+import ru.kaelesty.madprojects.api.projectgroups.CreateProjectGroupRequest
 import ru.kaelesty.madprojects.api.profile.CuratorProfileResponse
 import ru.kaelesty.madprojects.api.profile.UpdateProfileRequest
 import ru.kaelesty.madprojects.utils.KLogger
@@ -95,6 +97,35 @@ class CommonProfileApi(
         }
     }
 
+    suspend fun createProjectGroup(accessToken: String, request: CreateProjectGroupRequest): CreateProjectGroupApiResponse? {
+        return runCatching {
+            val response = client.post(CreateProjectGroupPath) {
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                setBody(request)
+                expectSuccess = false
+            }
+            KLogger.d(TAG) { "Create project group response status=${response.status}" }
+            val projectGroup = if (response.status == HttpStatusCode.OK) {
+                response.body<ProjectGroup>()
+            } else {
+                null
+            }
+            CreateProjectGroupApiResponse(
+                status = response.status,
+                projectGroup = projectGroup,
+                errorMessage = if (response.status != HttpStatusCode.OK) {
+                    response.bodyAsText().trim().takeIf { it.isNotEmpty() }
+                } else {
+                    null
+                }
+            )
+        }.getOrElse {
+            KLogger.e(TAG, it) { "Create project group request failed" }
+            null
+        }
+    }
+
     suspend fun getGroupProjects(accessToken: String, groupId: String): GroupProjectsApiResponse? {
         return runCatching {
             val response = client.get("$GetGroupProjectsPath?groupId=$groupId") {
@@ -172,12 +203,19 @@ class CommonProfileApi(
         val errorMessage: String? = null,
     )
 
+    data class CreateProjectGroupApiResponse(
+        val status: HttpStatusCode,
+        val projectGroup: ProjectGroup? = null,
+        val errorMessage: String? = null,
+    )
+
     private companion object {
         private const val TAG = "ktor-CommonProfileApi"
         const val CommonProfilePath = "/commonProfile"
         const val CuratorProfilePath = "/curatorProfile"
         const val UpdateCommonProfilePath = "/commonProfile/update"
         const val UpdateCuratorProfilePath = "/curatorProfile/update"
+        const val CreateProjectGroupPath = "/projectgroup/create"
         const val DeleteProjectGroupPath = "/projectGroup/delete"
         const val GetGroupProjectsPath = "/projectgroup/getGroupProjects"
     }

@@ -23,6 +23,7 @@ class CuratorGroupViewModel(
             val groupTitle: String,
             val pendingProjects: List<ProjectInGroupView>,
             val approvedProjects: List<ProjectInGroupView>,
+            val ratedProjects: List<ProjectInGroupView>,
         ) : State
         data class Error(val message: String) : State
     }
@@ -65,9 +66,10 @@ class CuratorGroupViewModel(
                         groupTitle = result.groupTitle,
                         pendingProjects = result.pendingProjects,
                         approvedProjects = result.approvedProjects,
+                        ratedProjects = result.ratedProjects,
                     )
                     KLogger.i(TAG) {
-                        "request success: pending=${result.pendingProjects.size} approved=${result.approvedProjects.size}"
+                        "request success: pending=${result.pendingProjects.size} approved=${result.approvedProjects.size} rated=${result.ratedProjects.size}"
                     }
                 }
                 is GetCuratorGroupProjectsUseCase.Result.Fail -> {

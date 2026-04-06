@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.kaelesty.madprojects.api.profile.CuratorProfileResponse
 import ru.kaelesty.madprojects.api.profile.UpdateProfileRequest
+import ru.kaelesty.madprojects.features.profile.domain.CreateProjectGroupUseCase
 import ru.kaelesty.madprojects.features.profile.domain.DeleteProjectGroupUseCase
 import ru.kaelesty.madprojects.features.profile.domain.GetCuratorProfileUseCase
 import ru.kaelesty.madprojects.features.profile.domain.UpdateCuratorProfileUseCase
@@ -16,6 +17,7 @@ import ru.kaelesty.madprojects.utils.KLogger
 class CuratorProfileViewModel(
     private val getCuratorProfileUseCase: GetCuratorProfileUseCase,
     private val updateCuratorProfileUseCase: UpdateCuratorProfileUseCase,
+    private val createProjectGroupUseCase: CreateProjectGroupUseCase,
     private val deleteProjectGroupUseCase: DeleteProjectGroupUseCase,
     private val str: StringResources = StringResources,
 ) : ViewModel() {
@@ -44,6 +46,13 @@ class CuratorProfileViewModel(
         val isSubmitting: Boolean = false,
     )
 
+    data class CreateGroupDialogState(
+        val isOpen: Boolean = false,
+        val title: String = "",
+        val errorMessage: String? = null,
+        val isSubmitting: Boolean = false,
+    )
+
     private val _state = MutableStateFlow<State>(State.Loading)
     val state = _state.asStateFlow()
 
@@ -52,6 +61,10 @@ class CuratorProfileViewModel(
 
     private val _deleteGroupDialogState = MutableStateFlow(DeleteGroupDialogState())
     val deleteGroupDialogState = _deleteGroupDialogState.asStateFlow()
+
+    private val _createGroupDialogState = MutableStateFlow(CreateGroupDialogState())
+    val createGroupDialogState = _createGroupDialogState.asStateFlow()
+
     private var isLoadInProgress = false
 
     init {
@@ -143,6 +156,20 @@ class CuratorProfileViewModel(
         _deleteGroupDialogState.value = DeleteGroupDialogState()
     }
 
+    fun openCreateGroupDialog() {
+        KLogger.d(TAG) { "openCreateGroupDialog" }
+        _createGroupDialogState.value = CreateGroupDialogState(isOpen = true)
+    }
+
+    fun closeCreateGroupDialog() {
+        if (_createGroupDialogState.value.isSubmitting) {
+            KLogger.d(TAG) { "closeCreateGroupDialog skipped: submitting" }
+            return
+        }
+        KLogger.d(TAG) { "closeCreateGroupDialog" }
+        _createGroupDialogState.value = CreateGroupDialogState()
+    }
+
     fun setEditFirstName(value: String) {
         _editDialogState.value = _editDialogState.value.copy(
             firstName = value.take(MAX_NAME_LENGTH),
@@ -167,6 +194,13 @@ class CuratorProfileViewModel(
     fun setEditGrade(value: String) {
         _editDialogState.value = _editDialogState.value.copy(
             grade = value.take(MAX_GRADE_LENGTH),
+            errorMessage = null,
+        )
+    }
+
+    fun setCreateGroupTitle(value: String) {
+        _createGroupDialogState.value = _createGroupDialogState.value.copy(
+            title = value.take(MAX_GROUP_TITLE_LENGTH),
             errorMessage = null,
         )
     }
@@ -259,6 +293,48 @@ class CuratorProfileViewModel(
         }
     }
 
+    fun submitCreateGroup() {
+        val current = _createGroupDialogState.value
+        if (!current.isOpen) {
+            KLogger.w(TAG) { "submitCreateGroup skipped: dialog is closed" }
+            return
+        }
+        if (current.isSubmitting) {
+            KLogger.d(TAG) { "submitCreateGroup skipped: submitting" }
+            return
+        }
+        val title = current.title.trim()
+        if (title.isBlank()) {
+            KLogger.w(TAG) { "submitCreateGroup validation failed: title is blank" }
+            _createGroupDialogState.value = current.copy(errorMessage = str.CuratorProfileCreateGroupErrorTitleEmpty)
+            return
+        }
+
+        KLogger.d(TAG) { "submitCreateGroup start: titleLength=${title.length}" }
+        _createGroupDialogState.value = current.copy(
+            title = title,
+            isSubmitting = true,
+            errorMessage = null,
+        )
+        viewModelScope.launch {
+            when (val result = createProjectGroupUseCase.create(title)) {
+                is CreateProjectGroupUseCase.Result.Success -> {
+                    KLogger.i(TAG) { "submitCreateGroup success: groupId=${result.group.id}" }
+                    _createGroupDialogState.value = CreateGroupDialogState()
+                    load()
+                }
+                is CreateProjectGroupUseCase.Result.Fail -> {
+                    val message = result.message?.takeIf { it.isNotBlank() } ?: str.CuratorProfileCreateGroupErrorSubmit
+                    KLogger.w(TAG) { "submitCreateGroup failed: status=${result.status} message=$message" }
+                    _createGroupDialogState.value = _createGroupDialogState.value.copy(
+                        isSubmitting = false,
+                        errorMessage = message,
+                    )
+                }
+            }
+        }
+    }
+
     private fun setEditError(message: String) {
         KLogger.w(TAG) { "submitEdit validation failed: $message" }
         _editDialogState.value = _editDialogState.value.copy(errorMessage = message)
@@ -268,5 +344,6 @@ class CuratorProfileViewModel(
         private const val TAG = "CuratorProfileViewModel"
         private const val MAX_NAME_LENGTH = 24
         private const val MAX_GRADE_LENGTH = 64
+        private const val MAX_GROUP_TITLE_LENGTH = 64
     }
 }

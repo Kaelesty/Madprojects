@@ -30,12 +30,16 @@ class GetCuratorGroupProjectsUseCase(
             return Result.Fail(null)
         }
         val pending = payload.projects.filter { it.status == ProjectStatus.Pending }
-        val approved = payload.projects.filter { it.status == ProjectStatus.Approved }
-        KLogger.i(TAG) { "load success: title=${payload.title}, pending=${pending.size}, approved=${approved.size}, total=${payload.projects.size}" }
+        val rated = payload.projects.filter { it.mark != null }
+        val approved = payload.projects.filter { it.status == ProjectStatus.Approved && it.mark == null }
+        KLogger.i(TAG) {
+            "load success: title=${payload.title}, pending=${pending.size}, approved=${approved.size}, rated=${rated.size}, total=${payload.projects.size}"
+        }
         return Result.Success(
             groupTitle = payload.title,
             pendingProjects = pending,
             approvedProjects = approved,
+            ratedProjects = rated,
         )
     }
 
@@ -44,6 +48,7 @@ class GetCuratorGroupProjectsUseCase(
             val groupTitle: String,
             val pendingProjects: List<ProjectInGroupView>,
             val approvedProjects: List<ProjectInGroupView>,
+            val ratedProjects: List<ProjectInGroupView>,
         ) : Result
         data class Fail(val message: String?) : Result
     }
@@ -52,4 +57,3 @@ class GetCuratorGroupProjectsUseCase(
         private const val TAG = "GetCuratorGroupProjectsUseCase"
     }
 }
-

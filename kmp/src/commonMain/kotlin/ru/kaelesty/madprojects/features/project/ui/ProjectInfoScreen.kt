@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -59,6 +60,7 @@ import org.koin.core.parameter.parametersOf
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
 import ru.kaelesty.madprojects.ui.cards.ProfileCard
+import ru.kaelesty.madprojects.ui.fields.AppDropdownField
 import ru.kaelesty.madprojects.ui.fields.AppTextField
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.ui.theme.Palette
@@ -77,10 +79,12 @@ fun ProjectInfoScreen(
     val inviteState by vm.inviteDialogState.collectAsState()
     val repoState by vm.repoDialogState.collectAsState()
     val deleteState by vm.deleteProjectDialogState.collectAsState()
+    val markState by vm.markProjectDialogState.collectAsState()
     val userType by authContext.userType.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
     val canManageAsCurator = userType == UserType.Curator
+    val markOptions = remember { listOf(1, 2, 3, 4, 5) }
     var inviteCopied by remember(inviteState.isOpen) { mutableStateOf(false) }
     var pendingMemberDelete by remember { mutableStateOf<ProjectMember?>(null) }
     var pendingRepoDelete by remember { mutableStateOf<ProjectRepository?>(null) }
@@ -278,6 +282,64 @@ fun ProjectInfoScreen(
         }
     }
 
+    if (markState.isOpen) {
+        DialogCard(onDismiss = vm::closeMarkProjectDialog) {
+            Text(
+                StringResources.ProjectInfoMarkDialogTitle,
+                color = Palette.OnCard,
+                fontFamily = Roboto,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                StringResources.ProjectInfoMarkDialogHint,
+                color = Palette.FieldLabel,
+                fontFamily = Roboto,
+                fontSize = 13.sp
+            )
+            Spacer(Modifier.height(10.dp))
+            AppDropdownField(
+                label = StringResources.ProjectInfoMarkDialogLabel,
+                options = markOptions,
+                selected = markState.selectedMark,
+                onSelect = vm::setProjectMark,
+                optionLabel = { it.toString() },
+                placeholder = StringResources.ProjectInfoMarkDialogPlaceholder,
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (markState.isConfirmStep) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    StringResources.ProjectInfoMarkDialogConfirmHint,
+                    color = Palette.FieldLabel,
+                    fontFamily = Roboto,
+                    fontSize = 12.sp
+                )
+            }
+            markState.errorMessage?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, color = Palette.AccentRed, fontFamily = Roboto, fontSize = 13.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            if (markState.isSubmitting) {
+                CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Palette.AccentBlue, strokeWidth = 2.dp)
+            } else {
+                DialogButtons(
+                    primaryText = if (markState.isConfirmStep) {
+                        StringResources.ProjectInfoMarkDialogConfirmButton
+                    } else {
+                        StringResources.ProjectInfoMarkDialogSubmitButton
+                    },
+                    onPrimary = vm::submitProjectMark,
+                    primaryEnabled = markState.selectedMark != null,
+                    secondaryText = StringResources.ProjectInfoCancelButton,
+                    onSecondary = vm::closeMarkProjectDialog,
+                )
+            }
+        }
+    }
+
     pendingMemberDelete?.let { member ->
         val isSubmitting = member.id in ui.removingMemberIds
         ConfirmDeleteDialog(
@@ -340,11 +402,13 @@ fun ProjectInfoScreen(
                         project = project,
                         ui = ui,
                         canManageProject = project.isCreator || canManageAsCurator,
+                        canGradeProject = canManageAsCurator,
                         onOpenRepo = { link -> runCatching { uriHandler.openUri(link) }.onFailure { KLogger.e(TAG, it) { "openUri failed" } } },
                         onInvite = vm::openInviteDialog,
                         onEditMeta = vm::openEditMetaDialog,
                         onAddRepo = vm::openRepoDialog,
                         onDeleteProject = vm::openDeleteProjectDialog,
+                        onMarkProject = vm::openMarkProjectDialog,
                         onRemoveMember = { memberId ->
                             pendingMemberDelete = project.members.firstOrNull { it.id == memberId }
                         },
@@ -367,11 +431,13 @@ private fun ProjectInfoContent(
     project: Project,
     ui: ProjectInfoViewModel.UiState,
     canManageProject: Boolean,
+    canGradeProject: Boolean,
     onOpenRepo: (String) -> Unit,
     onInvite: () -> Unit,
     onEditMeta: () -> Unit,
     onAddRepo: () -> Unit,
     onDeleteProject: () -> Unit,
+    onMarkProject: () -> Unit,
     onRemoveMember: (String) -> Unit,
     onRemoveRepo: (String) -> Unit,
     onDismissTeamError: () -> Unit,
@@ -494,6 +560,13 @@ private fun ProjectInfoContent(
         ProfileCard {
             SectionHeader(StringResources.ProjectInfoSectionSettings)
             ui.settingsActionError?.let { InlineError(it, onDismissSettingsError) }
+            if (canGradeProject) {
+                TextButton(onClick = onMarkProject, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Star, contentDescription = null, tint = Palette.OnCard)
+                    Spacer(Modifier.width(8.dp))
+                    Text(StringResources.ProjectInfoMarkProjectButton, color = Palette.OnCard, fontFamily = Roboto)
+                }
+            }
             TextButton(onClick = onEditMeta, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Filled.Edit, contentDescription = null, tint = Palette.OnCard)
                 Spacer(Modifier.width(8.dp))

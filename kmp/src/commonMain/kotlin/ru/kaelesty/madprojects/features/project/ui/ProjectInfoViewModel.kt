@@ -65,6 +65,14 @@ class ProjectInfoViewModel(
         val isDeleteAllowed: Boolean get() = confirmText.trim() == DELETE_CONFIRM_WORD
     }
 
+    data class MarkProjectDialogState(
+        val isOpen: Boolean = false,
+        val selectedMark: Int? = null,
+        val isConfirmStep: Boolean = false,
+        val isSubmitting: Boolean = false,
+        val errorMessage: String? = null,
+    )
+
     sealed interface Event {
         data object ProjectDeleted : Event
     }
@@ -83,6 +91,9 @@ class ProjectInfoViewModel(
 
     private val _deleteProjectDialogState = MutableStateFlow(DeleteProjectDialogState())
     val deleteProjectDialogState = _deleteProjectDialogState.asStateFlow()
+
+    private val _markProjectDialogState = MutableStateFlow(MarkProjectDialogState())
+    val markProjectDialogState = _markProjectDialogState.asStateFlow()
 
     private val _events = MutableSharedFlow<Event>(extraBufferCapacity = 4)
     val events = _events.asSharedFlow()
@@ -449,6 +460,74 @@ class ProjectInfoViewModel(
         }
     }
 
+    fun openMarkProjectDialog() {
+        val project = _uiState.value.project ?: run {
+            KLogger.w(TAG) { "openMarkProjectDialog skipped: project is null" }
+            return
+        }
+        KLogger.d(TAG) { "openMarkProjectDialog" }
+        _markProjectDialogState.value = MarkProjectDialogState(
+            isOpen = true,
+            selectedMark = project.mark,
+        )
+    }
+
+    fun closeMarkProjectDialog() {
+        if (_markProjectDialogState.value.isSubmitting) return
+        KLogger.d(TAG) { "closeMarkProjectDialog" }
+        _markProjectDialogState.value = MarkProjectDialogState()
+    }
+
+    fun setProjectMark(mark: Int) {
+        if (mark !in MARK_RANGE) return
+        _markProjectDialogState.update {
+            it.copy(
+                selectedMark = mark,
+                isConfirmStep = false,
+                errorMessage = null,
+            )
+        }
+    }
+
+    fun submitProjectMark() {
+        val current = _markProjectDialogState.value
+        if (!current.isOpen || current.isSubmitting) return
+        val mark = current.selectedMark
+        if (mark == null) {
+            _markProjectDialogState.value = current.copy(errorMessage = str.ProjectInfoMarkDialogErrorEmpty)
+            return
+        }
+        if (!current.isConfirmStep) {
+            _markProjectDialogState.value = current.copy(isConfirmStep = true, errorMessage = null)
+            return
+        }
+
+        _markProjectDialogState.value = current.copy(isSubmitting = true, errorMessage = null)
+        viewModelScope.launch {
+            when (val result = useCase.setProjectMark(projectId, mark)) {
+                ProjectInfoUseCase.ActionResult.Success -> {
+                    KLogger.i(TAG) { "submitProjectMark success: mark=$mark" }
+                    _markProjectDialogState.value = MarkProjectDialogState()
+                    _uiState.update { it.copy(settingsActionError = null) }
+                    load()
+                }
+
+                is ProjectInfoUseCase.ActionResult.Fail -> {
+                    val message = result.message ?: str.ProjectInfoMarkDialogErrorSubmit
+                    KLogger.w(TAG) { "submitProjectMark failed: status=${result.status} message=$message" }
+                    _markProjectDialogState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            isConfirmStep = false,
+                            errorMessage = message,
+                        )
+                    }
+                    _uiState.update { it.copy(settingsActionError = message) }
+                }
+            }
+        }
+    }
+
     private fun mapVerifyRepoError(status: HttpStatusCode?, fallback: String?): String {
         return when (status) {
             HttpStatusCode.TooEarly -> str.CreateProjectRepoLinkNoGithub
@@ -464,5 +543,6 @@ class ProjectInfoViewModel(
         private const val MAX_TITLE_LENGTH = 32
         private const val MAX_DESCRIPTION_LENGTH = 1000
         private const val MAX_REPO_LINK_LENGTH = 256
+        private val MARK_RANGE = 1..5
     }
 }

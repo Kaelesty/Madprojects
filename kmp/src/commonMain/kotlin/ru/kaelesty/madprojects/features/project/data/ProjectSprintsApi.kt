@@ -12,8 +12,10 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import ru.kaelesty.madprojects.api.activity.ActivityResponse
 import ru.kaelesty.madprojects.api.sprints.CreateSprintRequest
 import ru.kaelesty.madprojects.api.sprints.UpdateSprintRequest
@@ -85,6 +87,7 @@ class ProjectSprintsApi(
         return runCatching {
             val response = client.post(SprintCreatePath) {
                 header(HttpHeaders.Authorization, "Bearer $accessToken")
+                contentType(ContentType.Application.Json)
                 setBody(request)
                 expectSuccess = false
             }
@@ -114,6 +117,7 @@ class ProjectSprintsApi(
         return runCatching {
             val response = client.post(SprintUpdatePath) {
                 header(HttpHeaders.Authorization, "Bearer $accessToken")
+                contentType(ContentType.Application.Json)
                 setBody(request)
                 expectSuccess = false
             }

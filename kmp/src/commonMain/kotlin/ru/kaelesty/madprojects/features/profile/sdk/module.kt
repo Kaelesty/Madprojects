@@ -10,6 +10,7 @@ import ru.kaelesty.madprojects.features.profile.domain.GetCuratorGroupProjectsUs
 import ru.kaelesty.madprojects.features.profile.domain.GetCuratorProfileUseCase
 import ru.kaelesty.madprojects.features.profile.domain.GetUserProjectsUseCase
 import ru.kaelesty.madprojects.features.profile.domain.JoinProjectUseCase
+import ru.kaelesty.madprojects.features.profile.domain.CreateProjectGroupUseCase
 import ru.kaelesty.madprojects.features.profile.domain.DeleteProjectGroupUseCase
 import ru.kaelesty.madprojects.features.profile.domain.UpdateCommonProfileUseCase
 import ru.kaelesty.madprojects.features.profile.domain.UpdateCuratorProfileUseCase
@@ -26,12 +27,13 @@ val profileModule = module {
     single { GetCuratorProfileUseCase(get(), get()) }
     single { GetUserProjectsUseCase(get(), get()) }
     single { JoinProjectUseCase(get(), get()) }
+    single { CreateProjectGroupUseCase(get(), get()) }
     single { DeleteProjectGroupUseCase(get(), get()) }
     single { UpdateCommonProfileUseCase(get(), get()) }
     single { UpdateCuratorProfileUseCase(get(), get()) }
     viewModel { CommonProfileViewModel(get(), get(), get(), get()) }
     viewModel { (groupId: String) -> CuratorGroupViewModel(groupId, get()) }
-    viewModel { CuratorProfileViewModel(get(), get(), get()) }
+    viewModel { CuratorProfileViewModel(get(), get(), get(), get()) }
 
     single { ProfileNavItem(get()) } binds arrayOf(
         NavItem::class,

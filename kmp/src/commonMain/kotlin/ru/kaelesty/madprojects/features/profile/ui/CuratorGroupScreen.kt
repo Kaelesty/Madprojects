@@ -87,6 +87,7 @@ fun CuratorGroupScreen(
                 onBack = onBack,
                 pendingCount = loadedState?.pendingProjects?.size,
                 approvedCount = loadedState?.approvedProjects?.size,
+                ratedCount = loadedState?.ratedProjects?.size,
             )
 
             when (val current = state) {
@@ -151,6 +152,13 @@ fun CuratorGroupScreen(
                         emptyText = StringResources.CuratorGroupApprovedProjectsEmpty,
                         onProjectClick = onProjectClick,
                     )
+                    CuratorGroupProjectsCard(
+                        title = StringResources.CuratorGroupRatedProjectsTitle,
+                        projects = current.ratedProjects,
+                        accentColor = Palette.AccentGreen,
+                        emptyText = StringResources.CuratorGroupRatedProjectsEmpty,
+                        onProjectClick = onProjectClick,
+                    )
                 }
             }
         }
@@ -162,6 +170,7 @@ private fun CuratorGroupHeaderCard(
     onBack: () -> Unit,
     pendingCount: Int?,
     approvedCount: Int?,
+    ratedCount: Int?,
 ) {
     ProfileCard {
         Row(
@@ -206,7 +215,7 @@ private fun CuratorGroupHeaderCard(
             }
         }
 
-        if (pendingCount != null && approvedCount != null) {
+        if (pendingCount != null && approvedCount != null && ratedCount != null) {
             Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -222,6 +231,12 @@ private fun CuratorGroupHeaderCard(
                     label = StringResources.CuratorGroupApprovedProjectsTitle,
                     value = approvedCount,
                     accentColor = Palette.AccentBlue,
+                    modifier = Modifier.weight(1f)
+                )
+                GroupStatPill(
+                    label = StringResources.CuratorGroupRatedProjectsTitle,
+                    value = ratedCount,
+                    accentColor = Palette.AccentGreen,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -418,11 +433,12 @@ private fun CuratorGroupProjectItem(
                 Spacer(Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Palette.AccentBlue.copy(alpha = 0.12f)
+                    color = Palette.CardSurface,
+                    border = BorderStroke(1.dp, Palette.FieldBorder)
                 ) {
                     Text(
                         text = mark.toString(),
-                        color = Palette.AccentBlue,
+                        color = Palette.OnCard,
                         fontFamily = Roboto,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,

@@ -205,6 +205,7 @@ private fun CuratorProfileContent(
     val vm = koinViewModel<CuratorProfileViewModel>()
     val state by vm.state.collectAsState()
     val editDialogState by vm.editDialogState.collectAsState()
+    val createGroupDialogState by vm.createGroupDialogState.collectAsState()
     val deleteGroupDialogState by vm.deleteGroupDialogState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -235,6 +236,14 @@ private fun CuratorProfileContent(
             onLastNameChange = vm::setEditLastName,
             onExtraValueChange = vm::setEditGrade,
             onConfirm = vm::submitEdit,
+        )
+    }
+    if (createGroupDialogState.isOpen) {
+        CreateProjectGroupDialog(
+            state = createGroupDialogState,
+            onDismiss = vm::closeCreateGroupDialog,
+            onTitleChange = vm::setCreateGroupTitle,
+            onConfirm = vm::submitCreateGroup,
         )
     }
     if (deleteGroupDialogState.isOpen) {
@@ -273,6 +282,7 @@ private fun CuratorProfileContent(
                 )
                 ProjectGroupsCard(
                     groups = profile.projectGroups,
+                    onCreateGroup = vm::openCreateGroupDialog,
                     onOpenGroup = { onGroupClick(it.id) },
                     onDeleteGroup = { vm.openDeleteGroupDialog(it.id, it.title) }
                 )
@@ -379,6 +389,100 @@ private fun DeleteProjectGroupDialog(
                 ) {
                     Text(
                         text = StringResources.CuratorProfileDeleteGroupCancelButton,
+                        fontFamily = Roboto
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateProjectGroupDialog(
+    state: CuratorProfileViewModel.CreateGroupDialogState,
+    onDismiss: () -> Unit,
+    onTitleChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(min = 280.dp, max = 420.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = Palette.CardSurface,
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = StringResources.CuratorProfileCreateGroupDialogTitle,
+                    style = TextStyle(
+                        color = Palette.OnCard,
+                        fontFamily = Roboto,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+                Text(
+                    text = StringResources.CuratorProfileCreateGroupDialogHint,
+                    color = Palette.FieldLabel,
+                    fontFamily = Roboto,
+                    fontSize = 14.sp
+                )
+                AppTextField(
+                    label = StringResources.CuratorProfileCreateGroupTitleLabel,
+                    value = state.title,
+                    onValueChange = onTitleChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = StringResources.CuratorProfileCreateGroupTitlePlaceholder
+                )
+                state.errorMessage?.let { message ->
+                    Text(
+                        text = message,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.error,
+                        fontFamily = Roboto,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                if (state.isSubmitting) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Palette.AccentBlue,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = StringResources.CuratorProfileCreateGroupSubmitting,
+                            color = Palette.FieldLabel,
+                            fontFamily = Roboto,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                PrimaryActionButton(
+                    text = StringResources.CuratorProfileCreateGroupConfirmButton,
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isSubmitting
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !state.isSubmitting,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = Palette.AccentBlue
+                    )
+                ) {
+                    Text(
+                        text = StringResources.CuratorProfileCreateGroupCancelButton,
                         fontFamily = Roboto
                     )
                 }
@@ -627,19 +731,36 @@ private fun ProfileEditDialog(
 @Composable
 private fun ProjectGroupsCard(
     groups: List<ProjectGroup>,
+    onCreateGroup: () -> Unit,
     onOpenGroup: (ProjectGroup) -> Unit,
     onDeleteGroup: (ProjectGroup) -> Unit,
 ) {
     ProfileCard {
-        Text(
-            text = StringResources.CuratorProfileGroupsTitle,
-            style = TextStyle(
-                color = Palette.OnCard,
-                fontFamily = Roboto,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = StringResources.CuratorProfileGroupsTitle,
+                style = TextStyle(
+                    color = Palette.OnCard,
+                    fontFamily = Roboto,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                )
             )
-        )
+            Spacer(Modifier.weight(1f))
+            IconButton(
+                onClick = onCreateGroup,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = StringResources.CuratorProfileGroupsCreateButton,
+                    tint = Palette.OnCard
+                )
+            }
+        }
         Spacer(Modifier.height(12.dp))
         if (groups.isEmpty()) {
             Text(
