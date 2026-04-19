@@ -1,5 +1,6 @@
 package app.features.profile
 
+import app.openapi.annotations.*
 import domain.GithubTokensRepo
 import domain.auth.UserType
 import domain.profile.CommonProfileResponse
@@ -40,6 +41,10 @@ class ProfileFeatureImpl(
     private val projectsGroupRepo: ProjectsGroupRepo,
 ): ProfileFeature {
 
+    @ApiOperation(method = "POST", path = "/curatorProfile/update", summary = "Update curator profile", tags = ["profile"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiRequestBody(type = UpdateProfileRequest::class, description = "Updated curator profile data")
+    @ApiResponse(code = 200, description = "Curator profile updated")
     override suspend fun updateCuratorProfile(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -54,6 +59,12 @@ class ProfileFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/curatorProfile", summary = "Get curator profile", tags = ["profile"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "profileId", type = String::class, required = false)
+    @ApiResponse(code = 200, description = "Curator profile returned", type = CuratorProfileResponse::class)
+    @ApiResponse(code = 404, description = "Curator profile not found")
+    @ApiResponse(code = 423, description = "Requested profile is not a curator")
     override suspend fun getCuratorProfile(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -90,6 +101,11 @@ class ProfileFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/sharedProfile", summary = "Get shared profile", tags = ["profile"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "userId", type = String::class, required = false)
+    @ApiResponse(code = 200, description = "Shared profile returned", type = SharedProfileResponse::class)
+    @ApiResponse(code = 404, description = "Profile not found")
     override suspend fun getSharedProfile(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -135,6 +151,10 @@ class ProfileFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/commonProfile/update", summary = "Update common profile", tags = ["profile"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiRequestBody(type = UpdateProfileRequest::class, description = "Updated common profile data")
+    @ApiResponse(code = 200, description = "Common profile updated")
     override suspend fun updateCommonProfile(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -149,6 +169,11 @@ class ProfileFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/commonProfile", summary = "Get common profile", tags = ["profile"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "profileId", type = String::class, required = false)
+    @ApiResponse(code = 200, description = "Common profile returned", type = CommonProfileResponse::class)
+    @ApiResponse(code = 404, description = "Profile not found")
     override suspend fun getCommonProfile(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()

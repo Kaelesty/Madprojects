@@ -11,6 +11,7 @@ import ru.kaelesty.madprojects.features.profile.domain.CreateProjectGroupUseCase
 import ru.kaelesty.madprojects.features.profile.domain.DeleteProjectGroupUseCase
 import ru.kaelesty.madprojects.features.profile.domain.GetCuratorProfileUseCase
 import ru.kaelesty.madprojects.features.profile.domain.UpdateCuratorProfileUseCase
+import ru.kaelesty.madprojects.features.auth.domain.StartGithubOauthUseCase
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.utils.KLogger
 
@@ -19,6 +20,7 @@ class CuratorProfileViewModel(
     private val updateCuratorProfileUseCase: UpdateCuratorProfileUseCase,
     private val createProjectGroupUseCase: CreateProjectGroupUseCase,
     private val deleteProjectGroupUseCase: DeleteProjectGroupUseCase,
+    private val startGithubOauthUseCase: StartGithubOauthUseCase,
     private val str: StringResources = StringResources,
 ) : ViewModel() {
 
@@ -338,6 +340,10 @@ class CuratorProfileViewModel(
     private fun setEditError(message: String) {
         KLogger.w(TAG) { "submitEdit validation failed: $message" }
         _editDialogState.value = _editDialogState.value.copy(errorMessage = message)
+    }
+
+    suspend fun buildGithubOauthStartUrl(): StartGithubOauthUseCase.Result {
+        return startGithubOauthUseCase.buildStartUrl()
     }
 
     private companion object {

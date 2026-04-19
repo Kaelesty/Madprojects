@@ -1,5 +1,6 @@
 package app.features.activity
 
+import app.openapi.annotations.*
 import domain.activity.ActivityRepo
 import domain.profile.ProfileRepo
 import domain.profile.SharedProfile
@@ -26,6 +27,12 @@ class ActivityFeatureImpl(
     private val projectRepo: ProjectRepo
 ): ActivityFeature {
 
+    @ApiOperation(method = "GET", path = "/project/activity/get", summary = "Get project activity", tags = ["activity"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiQueryParam(name = "count", type = String::class, required = false, description = "Maximum number of activity entries or null")
+    @ApiResponse(code = 200, description = "Project activity returned", type = ActivityResponse::class)
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun getActivity(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()

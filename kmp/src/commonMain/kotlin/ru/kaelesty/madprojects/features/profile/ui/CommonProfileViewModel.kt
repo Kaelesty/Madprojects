@@ -12,6 +12,7 @@ import ru.kaelesty.madprojects.features.profile.domain.GetCommonProfileUseCase
 import ru.kaelesty.madprojects.features.profile.domain.GetUserProjectsUseCase
 import ru.kaelesty.madprojects.features.profile.domain.JoinProjectUseCase
 import ru.kaelesty.madprojects.features.profile.domain.UpdateCommonProfileUseCase
+import ru.kaelesty.madprojects.features.auth.domain.StartGithubOauthUseCase
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.utils.KLogger
 import io.ktor.http.HttpStatusCode
@@ -21,6 +22,7 @@ class CommonProfileViewModel(
     private val projectsUseCase: GetUserProjectsUseCase,
     private val joinProjectUseCase: JoinProjectUseCase,
     private val updateProfileUseCase: UpdateCommonProfileUseCase,
+    private val startGithubOauthUseCase: StartGithubOauthUseCase,
     private val str: StringResources = StringResources,
 ) : ViewModel() {
 
@@ -272,6 +274,10 @@ class CommonProfileViewModel(
     private fun setEditError(message: String) {
         KLogger.w(TAG) { "submitEdit validation failed: $message" }
         _editDialogState.value = _editDialogState.value.copy(errorMessage = message)
+    }
+
+    suspend fun buildGithubOauthStartUrl(): StartGithubOauthUseCase.Result {
+        return startGithubOauthUseCase.buildStartUrl()
     }
 
     private companion object {

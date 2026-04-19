@@ -23,7 +23,7 @@ val projectCreateModule = module {
     single { GetCuratorsUseCase(get(), get()) }
     single { GetCuratorGroupsUseCase(get(), get()) }
     single { VerifyRepoLinkUseCase(get(), get()) }
-    viewModel { CreateProjectViewModel(get(), get(), get(), get()) }
+    viewModel { CreateProjectViewModel(get(), get(), get(), get(), get()) }
 
     single { ProjectCreateNavItem() } binds arrayOf(
         NavItem::class,

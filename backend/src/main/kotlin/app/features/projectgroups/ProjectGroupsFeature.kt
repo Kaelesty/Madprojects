@@ -1,5 +1,6 @@
 package app.features.projectgroups
 
+import app.openapi.annotations.*
 import domain.profile.ProfileRepo
 import domain.project.ProjectStatus
 import domain.projectgroups.ProjectsGroupRepo
@@ -32,6 +33,11 @@ class ProjectGroupsFeatureImpl(
     private val profileRepo: ProfileRepo,
 ): ProjectGroupsFeature {
 
+    @ApiOperation(method = "POST", path = "/projectGroup/delete", summary = "Delete project group", tags = ["project-groups"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectGroupId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project group deleted")
+    @ApiResponse(code = 400, description = "Project group id is missing or user is not the owner")
     override suspend fun deleteProjectGroup(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -67,6 +73,14 @@ class ProjectGroupsFeatureImpl(
 
     }
 
+    @ApiOperation(method = "GET", path = "/curatorship/getProjects", summary = "Get curator projects", tags = ["project-groups"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectGroupId", type = String::class, required = false)
+    @ApiQueryParam(name = "status", type = String::class, required = false)
+    @ApiQueryParam(name = "marked", type = Boolean::class, required = false)
+    @ApiQueryParam(name = "mark", type = Int::class, required = false)
+    @ApiResponse(code = 200, description = "Curator projects returned")
+    @ApiResponse(code = 423, description = "User is not a curator")
     override suspend fun getCuratorProjects(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -110,6 +124,11 @@ class ProjectGroupsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/projectgroup/create", summary = "Create project group", tags = ["project-groups"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiRequestBody(type = CreateProjectGroupRequest::class, description = "Project group creation payload")
+    @ApiResponse(code = 200, description = "Project group created")
+    @ApiResponse(code = 423, description = "User is not a curator")
     override suspend fun createProjectsGroup(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -131,6 +150,11 @@ class ProjectGroupsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/projectgroup/getCuratorGroups", summary = "Get curator project groups", tags = ["project-groups"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "curatorId", type = String::class, required = false)
+    @ApiResponse(code = 200, description = "Project groups returned")
+    @ApiResponse(code = 404, description = "Curator not found")
     override suspend fun getCuratorProjectGroups(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -152,6 +176,12 @@ class ProjectGroupsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/projectgroup/getGroupProjects", summary = "Get project group projects", tags = ["project-groups"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "groupId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project group projects returned", type = GroupProjectsResponse::class)
+    @ApiResponse(code = 404, description = "Project group not found or user has no access")
+    @ApiResponse(code = 423, description = "User is not a curator")
     override suspend fun getGroupProjects(rc: RoutingContext) {
         with (rc) {
             val principal = call.principal<JWTPrincipal>()

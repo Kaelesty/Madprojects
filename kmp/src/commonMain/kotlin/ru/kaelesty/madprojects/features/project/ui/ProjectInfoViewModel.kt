@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ru.kaelesty.madprojects.features.auth.domain.StartGithubOauthUseCase
 import ru.kaelesty.madprojects.features.project.domain.ProjectInfoUseCase
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.utils.KLogger
@@ -17,6 +18,7 @@ import ru.kaelesty.madprojects.utils.KLogger
 class ProjectInfoViewModel(
     private val projectId: String,
     private val useCase: ProjectInfoUseCase,
+    private val startGithubOauthUseCase: StartGithubOauthUseCase,
     private val str: StringResources = StringResources,
 ) : ViewModel() {
 
@@ -53,6 +55,7 @@ class ProjectInfoViewModel(
         val link: String = "",
         val isValidating: Boolean = false,
         val isSubmitting: Boolean = false,
+        val showGithubConnectAction: Boolean = false,
         val errorMessage: String? = null,
     )
 
@@ -329,7 +332,13 @@ class ProjectInfoViewModel(
     }
 
     fun setRepoLink(value: String) {
-        _repoDialogState.update { it.copy(link = value.take(MAX_REPO_LINK_LENGTH), errorMessage = null) }
+        _repoDialogState.update {
+            it.copy(
+                link = value.take(MAX_REPO_LINK_LENGTH),
+                errorMessage = null,
+                showGithubConnectAction = false
+            )
+        }
     }
 
     fun submitAddRepository() {
@@ -365,6 +374,7 @@ class ProjectInfoViewModel(
                             _repoDialogState.update {
                                 it.copy(
                                     isSubmitting = false,
+                                    showGithubConnectAction = false,
                                     errorMessage = message
                                 )
                             }
@@ -378,12 +388,17 @@ class ProjectInfoViewModel(
                     _repoDialogState.update {
                         it.copy(
                             isValidating = false,
+                            showGithubConnectAction = verify.status == HttpStatusCode.TooEarly,
                             errorMessage = message
                         )
                     }
                 }
             }
         }
+    }
+
+    suspend fun buildGithubOauthStartUrl(): StartGithubOauthUseCase.Result {
+        return startGithubOauthUseCase.buildStartUrl()
     }
 
     fun removeRepository(repoId: String) {

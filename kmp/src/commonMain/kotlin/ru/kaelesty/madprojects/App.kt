@@ -8,7 +8,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.collect
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
+import ru.kaelesty.madprojects.features.auth.domain.GithubOauthBridge
 import ru.kaelesty.madprojects.features.auth.sdk.AuthNavItem
 import ru.kaelesty.madprojects.features.checkin.sdk.CheckInNavItem
 import ru.kaelesty.madprojects.features.profile.sdk.ProfileNavItem
@@ -26,6 +28,16 @@ fun App(
 
     val authStart = AuthNavItem.Route.Hello
     val startDestination = CheckInNavItem.Route.CheckIn
+
+    LaunchedEffect(navController) {
+        GithubOauthBridge.events.collect { result ->
+            val from = navController.currentBackStackEntry?.destination?.route ?: "unknown"
+            KLogger.i(TAG) { "oauth callback: status=${result.status} reason=${result.reason} -> navigate $from -> ${ProfileNavItem.Route.Profile}" }
+            navController.navigate(ProfileNavItem.Route.Profile) {
+                launchSingleTop = true
+            }
+        }
+    }
 
     if (authContext != null) {
         LaunchedEffect(isAuthenticated) {

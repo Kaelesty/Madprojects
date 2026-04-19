@@ -16,6 +16,7 @@ import ru.kaelesty.madprojects.features.projectcreate.domain.CreateProjectUseCas
 import ru.kaelesty.madprojects.features.projectcreate.domain.GetCuratorGroupsUseCase
 import ru.kaelesty.madprojects.features.projectcreate.domain.GetCuratorsUseCase
 import ru.kaelesty.madprojects.features.projectcreate.domain.VerifyRepoLinkUseCase
+import ru.kaelesty.madprojects.features.auth.domain.StartGithubOauthUseCase
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.utils.KLogger
 
@@ -24,6 +25,7 @@ class CreateProjectViewModel(
     private val getCuratorsUseCase: GetCuratorsUseCase,
     private val getCuratorGroupsUseCase: GetCuratorGroupsUseCase,
     private val verifyRepoLinkUseCase: VerifyRepoLinkUseCase,
+    private val startGithubOauthUseCase: StartGithubOauthUseCase,
     private val str: StringResources = StringResources,
 ) : ViewModel() {
 
@@ -37,6 +39,7 @@ class CreateProjectViewModel(
         val isRepoDialogOpen: Boolean = false,
         val repoInput: String = "",
         val repoInputError: String? = null,
+        val showGithubConnectAction: Boolean = false,
         val isRepoValidating: Boolean = false,
         val isSubmitting: Boolean = false,
         val errorMessage: String? = null,
@@ -93,6 +96,7 @@ class CreateProjectViewModel(
                 isRepoDialogOpen = true,
                 repoInput = "",
                 repoInputError = null,
+                showGithubConnectAction = false,
                 isRepoValidating = false,
             )
         }
@@ -109,13 +113,14 @@ class CreateProjectViewModel(
                 isRepoDialogOpen = false,
                 repoInput = "",
                 repoInputError = null,
+                showGithubConnectAction = false,
                 isRepoValidating = false,
             )
         }
     }
 
     fun setRepoInput(value: String) {
-        update { it.copy(repoInput = value, repoInputError = null) }
+        update { it.copy(repoInput = value, repoInputError = null, showGithubConnectAction = false) }
     }
 
     fun confirmRepoInput() {
@@ -147,6 +152,7 @@ class CreateProjectViewModel(
                             isRepoDialogOpen = false,
                             repoInput = "",
                             repoInputError = null,
+                            showGithubConnectAction = false,
                             isRepoValidating = false,
                         )
                     }
@@ -154,10 +160,20 @@ class CreateProjectViewModel(
                 is VerifyRepoLinkUseCase.Result.Fail -> {
                     val message = repoLinkErrorMessage(result)
                     KLogger.w(TAG) { "confirmRepoInput failed: status=${result.status} message=$message" }
-                    update { it.copy(repoInputError = message, isRepoValidating = false) }
+                    update {
+                        it.copy(
+                            repoInputError = message,
+                            showGithubConnectAction = result.status == HttpStatusCode.TooEarly,
+                            isRepoValidating = false
+                        )
+                    }
                 }
             }
         }
+    }
+
+    suspend fun buildGithubOauthStartUrl(): StartGithubOauthUseCase.Result {
+        return startGithubOauthUseCase.buildStartUrl()
     }
 
     fun removeRepoLink(link: String) {

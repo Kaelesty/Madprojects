@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ktor)
     application
@@ -30,9 +31,6 @@ dependencies {
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
 
-    implementation(libs.ktor.server.openapi)
-    implementation(libs.ktor.server.swagger)
-
     implementation(libs.ktor.server.auth)
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.serialization.jackson)
@@ -44,6 +42,11 @@ dependencies {
     implementation(libs.poi.ooxml)
 
     implementation(project(":common"))
+    implementation(project(":backend-openapi-api"))
+
+    ksp(project(":backend-openapi-processor"))
+
+    testImplementation(libs.ktor.server.test.host)
 }
 
 tasks.test {

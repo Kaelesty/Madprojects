@@ -1,5 +1,6 @@
 package app.features.project
 
+import app.openapi.annotations.*
 import domain.KanbanRepository
 import domain.RepositoriesRepo
 import domain.activity.ActivityRepo
@@ -52,6 +53,13 @@ class ProjectsFeatureImpl(
     private val kanbanRepository: KanbanRepository,
 ) : ProjectsFeature {
 
+    @ApiOperation(method = "POST", path = "/project/createKardChat", summary = "Create kard chat", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "kardId", type = String::class, required = true)
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Kard chat created")
+    @ApiResponse(code = 404, description = "Kard or project not found")
+    @ApiResponse(code = 406, description = "Kard chat could not be created")
     override suspend fun createKardChat(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -79,6 +87,12 @@ class ProjectsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/project/member/remove", summary = "Remove project member", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "memberId", type = String::class, required = true)
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project member removed")
+    @ApiResponse(code = 404, description = "Member or project not found, or user has no access")
     override suspend fun removeMember(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -125,6 +139,11 @@ class ProjectsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/project/delete", summary = "Delete project", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project deleted")
+    @ApiResponse(code = 404, description = "Project not found or user is not the creator")
     override suspend fun deleteProject(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -143,6 +162,11 @@ class ProjectsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/project/update", summary = "Update project metadata", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiRequestBody(type = UpdateProjectMetaRequest::class, description = "Updated project metadata")
+    @ApiResponse(code = 200, description = "Project metadata updated")
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun updateProjectMeta(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -161,6 +185,12 @@ class ProjectsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/project/repo/remove", summary = "Remove project repository", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiQueryParam(name = "repoId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Repository removed from project")
+    @ApiResponse(code = 404, description = "Project or repository not found, or user has no access")
     override suspend fun removeRepository(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -187,6 +217,12 @@ class ProjectsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/project/repo/add", summary = "Add project repository", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiQueryParam(name = "repoLink", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Repository bound to project")
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun addRepository(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -218,6 +254,11 @@ class ProjectsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/project/get", summary = "Get project", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project returned")
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun getProject(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -236,6 +277,9 @@ class ProjectsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/project/curators", summary = "List project curators", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiResponse(code = 200, description = "Curators returned")
     override suspend fun getCurators(rc: RoutingContext) {
         with(rc) {
             val curators = projectRepo.getCuratorsList()
@@ -247,6 +291,10 @@ class ProjectsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/project/create", summary = "Create project", tags = ["projects"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiRequestBody(type = CreateProjectRequest::class, description = "Project creation payload")
+    @ApiResponse(code = 200, description = "Project created", type = CreateProjectResponse::class)
     override suspend fun createProject(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()

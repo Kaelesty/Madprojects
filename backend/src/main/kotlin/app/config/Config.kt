@@ -24,6 +24,10 @@ data class Config(
     data class Github(
         val clientSecret: String,
         val clientId: String,
+        val webProfileRedirectUrl: String? = null,
+        val androidProfileRedirectUrl: String? = null,
+        val iosProfileRedirectUrl: String? = null,
+        val oauthSessionTtlSeconds: Long = 600L,
     )
 
     @Serializable

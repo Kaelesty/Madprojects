@@ -1,5 +1,6 @@
 package app.features
 
+import app.openapi.annotations.*
 import data.schemas.ProjectCuratorshipService
 import domain.CuratorshipRepo
 import domain.MarksRepo
@@ -28,6 +29,12 @@ class MarksFeatureImpl(
     private val curatorshipRepo: CuratorshipRepo,
 ): MarksFeature {
 
+    @ApiOperation(method = "POST", path = "/project/mark/set", summary = "Set project mark", tags = ["marks"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiQueryParam(name = "mark", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Project marked")
+    @ApiResponse(code = 404, description = "Project not found or user is not the curator")
     override suspend fun markProject(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -45,6 +52,11 @@ class MarksFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/project/mark/get", summary = "Get project mark", tags = ["marks"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project mark returned")
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun getProjectMark(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()

@@ -34,10 +34,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,8 +54,13 @@ import domain.project.ProjectStatus
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
+import ru.kaelesty.madprojects.features.auth.domain.GithubOauthBridge
+import ru.kaelesty.madprojects.features.auth.domain.GithubOauthResult
+import ru.kaelesty.madprojects.features.auth.domain.StartGithubOauthUseCase
 import ru.kaelesty.madprojects.features.profile.sdk.ProfileNavItem
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
 import ru.kaelesty.madprojects.ui.cards.ProfileCard
@@ -64,6 +71,7 @@ import ru.kaelesty.madprojects.ui.menus.AppDropdownMenuItem
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.ui.theme.Palette
 import ru.kaelesty.madprojects.ui.theme.Roboto
+import ru.kaelesty.madprojects.utils.KLogger
 
 @Composable
 fun ProfileScreen(
@@ -71,16 +79,36 @@ fun ProfileScreen(
     navigator: ProfileNavItem.Navigator,
 ) {
     val userType by authContext.userType.collectAsState()
+    val pendingOauthResult by GithubOauthBridge.pendingResult.collectAsState()
+    val (oauthBanner, setOauthBanner) = remember { mutableStateOf<GithubOauthResult?>(null) }
+
+    androidx.compose.runtime.LaunchedEffect(pendingOauthResult?.eventId) {
+        pendingOauthResult?.let {
+            setOauthBanner(it)
+            GithubOauthBridge.consumePendingResult()
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(oauthBanner?.eventId) {
+        if (oauthBanner != null) {
+            delay(5000)
+            setOauthBanner(null)
+        }
+    }
+
     ProfileScaffold(title = StringResources.ProfileTitle) {
         when (userType) {
             UserType.Common -> CommonProfileContent(
                 authContext = authContext,
                 onCreateProject = navigator::toCreateProject,
-                onProjectClick = navigator::toProject
+                onProjectClick = navigator::toProject,
+                oauthBanner = oauthBanner,
+                onDismissOauthBanner = { setOauthBanner(null) },
             )
             UserType.Curator -> CuratorProfileContent(
                 authContext = authContext,
                 onGroupClick = navigator::toCuratorGroup,
+                oauthBanner = oauthBanner,
+                onDismissOauthBanner = { setOauthBanner(null) },
             )
             null -> ProfilePlaceholderContent(StringResources.ProfilePlaceholder)
         }
@@ -92,6 +120,8 @@ private fun CommonProfileContent(
     authContext: AuthContext,
     onCreateProject: () -> Unit,
     onProjectClick: (String) -> Unit,
+    oauthBanner: GithubOauthResult?,
+    onDismissOauthBanner: () -> Unit,
 ) {
     val vm = koinViewModel<CommonProfileViewModel>()
     val state by vm.state.collectAsState()
@@ -99,6 +129,8 @@ private fun CommonProfileContent(
     val joinDialogState by vm.joinDialogState.collectAsState()
     val editDialogState by vm.editDialogState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
 
     DisposableEffect(lifecycleOwner, vm) {
         val observer = LifecycleEventObserver { _, event ->
@@ -108,6 +140,11 @@ private fun CommonProfileContent(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    androidx.compose.runtime.LaunchedEffect(oauthBanner?.eventId) {
+        if (oauthBanner?.status == GithubOauthResult.Status.Success) {
+            vm.load()
+        }
     }
 
     if (joinDialogState.isOpen) {
@@ -143,6 +180,12 @@ private fun CommonProfileContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        oauthBanner?.let { banner ->
+            GithubOauthBanner(
+                result = banner,
+                onDismiss = onDismissOauthBanner,
+            )
+        }
         when (val current = state) {
             CommonProfileViewModel.State.Loading -> {
                 ProfileCard {
@@ -163,6 +206,20 @@ private fun CommonProfileContent(
                     secondaryValue = profile.group,
                     onEdit = vm::openEditDialog,
                     onLogout = authContext::logout,
+                    isGithubConnected = profile.githubMeta != null,
+                    onConnectGithub = {
+                        scope.launch {
+                            when (val result = vm.buildGithubOauthStartUrl()) {
+                                is StartGithubOauthUseCase.Result.Success -> {
+                                    runCatching { uriHandler.openUri(result.url) }
+                                        .onFailure { KLogger.e("ProfileScreen", it) { "openUri failed (common profile)" } }
+                                }
+                                is StartGithubOauthUseCase.Result.Fail -> {
+                                    KLogger.w("ProfileScreen") { "buildStartUrl failed (common profile): ${result.message}" }
+                                }
+                            }
+                        }
+                    },
                 )
             }
             CommonProfileViewModel.State.Error -> {
@@ -201,6 +258,8 @@ private fun CommonProfileContent(
 private fun CuratorProfileContent(
     authContext: AuthContext,
     onGroupClick: (String) -> Unit,
+    oauthBanner: GithubOauthResult?,
+    onDismissOauthBanner: () -> Unit,
 ) {
     val vm = koinViewModel<CuratorProfileViewModel>()
     val state by vm.state.collectAsState()
@@ -208,6 +267,8 @@ private fun CuratorProfileContent(
     val createGroupDialogState by vm.createGroupDialogState.collectAsState()
     val deleteGroupDialogState by vm.deleteGroupDialogState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
 
     DisposableEffect(lifecycleOwner, vm) {
         val observer = LifecycleEventObserver { _, event ->
@@ -217,6 +278,11 @@ private fun CuratorProfileContent(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    androidx.compose.runtime.LaunchedEffect(oauthBanner?.eventId) {
+        if (oauthBanner?.status == GithubOauthResult.Status.Success) {
+            vm.load()
+        }
     }
 
     if (editDialogState.isOpen) {
@@ -259,6 +325,12 @@ private fun CuratorProfileContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        oauthBanner?.let { banner ->
+            GithubOauthBanner(
+                result = banner,
+                onDismiss = onDismissOauthBanner,
+            )
+        }
         when (val current = state) {
             CuratorProfileViewModel.State.Loading -> {
                 ProfileCard {
@@ -279,6 +351,20 @@ private fun CuratorProfileContent(
                     secondaryValue = profile.grade,
                     onEdit = vm::openEditDialog,
                     onLogout = authContext::logout,
+                    isGithubConnected = profile.githubMeta != null,
+                    onConnectGithub = {
+                        scope.launch {
+                            when (val result = vm.buildGithubOauthStartUrl()) {
+                                is StartGithubOauthUseCase.Result.Success -> {
+                                    runCatching { uriHandler.openUri(result.url) }
+                                        .onFailure { KLogger.e("ProfileScreen", it) { "openUri failed (curator profile)" } }
+                                }
+                                is StartGithubOauthUseCase.Result.Fail -> {
+                                    KLogger.w("ProfileScreen") { "buildStartUrl failed (curator profile): ${result.message}" }
+                                }
+                            }
+                        }
+                    },
                 )
                 ProjectGroupsCard(
                     groups = profile.projectGroups,
@@ -515,6 +601,8 @@ private fun ProfileIdentityCard(
     email: String,
     secondaryLabel: String,
     secondaryValue: String,
+    isGithubConnected: Boolean,
+    onConnectGithub: () -> Unit,
     onEdit: () -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -602,6 +690,78 @@ private fun ProfileIdentityCard(
             fontFamily = Roboto,
             textAlign = TextAlign.Center
         )
+        if (!isGithubConnected) {
+            Spacer(Modifier.height(10.dp))
+            TextButton(
+                onClick = onConnectGithub,
+                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                    contentColor = Palette.AccentBlue
+                )
+            ) {
+                Text(
+                    text = StringResources.GithubAuthConnectButton,
+                    fontFamily = Roboto
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GithubOauthBanner(
+    result: GithubOauthResult,
+    onDismiss: () -> Unit,
+) {
+    val isSuccess = result.status == GithubOauthResult.Status.Success
+    val background = if (isSuccess) {
+        Palette.AccentGreen.copy(alpha = 0.14f)
+    } else {
+        Palette.AccentRed.copy(alpha = 0.14f)
+    }
+    val contentColor = if (isSuccess) Palette.AccentGreen else Palette.AccentRed
+    val message = if (isSuccess) {
+        StringResources.GithubAuthBannerSuccess
+    } else {
+        val reason = result.reason
+        if (reason.isNullOrBlank()) {
+            StringResources.GithubAuthBannerError
+        } else {
+            "${StringResources.GithubAuthBannerError}: $reason"
+        }
+    }
+
+    ProfileCard {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = background,
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = message,
+                    modifier = Modifier.weight(1f),
+                    color = contentColor,
+                    fontFamily = Roboto,
+                    fontSize = 13.sp
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = contentColor
+                    )
+                ) {
+                    Text(
+                        text = StringResources.GithubAuthBannerDismiss,
+                        fontFamily = Roboto
+                    )
+                }
+            }
+        }
     }
 }
 

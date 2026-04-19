@@ -85,6 +85,10 @@ object StringResources {
     const val ProfileMenu = "Меню профиля"
     const val ProfileMenuEdit = "Редактировать"
     const val ProfileMenuLogout = "Выйти"
+    const val GithubAuthConnectButton = "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c GitHub"
+    const val GithubAuthBannerSuccess = "GitHub \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d"
+    const val GithubAuthBannerError = "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c GitHub"
+    const val GithubAuthBannerDismiss = "\u0421\u043a\u0440\u044b\u0442\u044c"
     const val ProjectScreenTitle = "Проект"
     const val ProjectModerationBannerTitle = "Это неодобренный проект"
     const val ProjectModerationBannerBody = "Проверьте проект и примите решение: одобрить или отклонить с комментарием."
@@ -331,4 +335,7 @@ object StringResources {
     const val CreateProjectErrorRepoLinksEmpty = "Добавьте хотя бы одну ссылку на репозиторий"
     const val CreateProjectErrorUnavailable = "Ошибка создания проекта"
 }
+
+
+
 

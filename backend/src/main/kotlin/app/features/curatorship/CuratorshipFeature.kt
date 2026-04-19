@@ -1,5 +1,6 @@
 package app.features.curatorship
 
+import app.openapi.annotations.*
 import domain.CuratorshipRepo
 import domain.curatorship.CheckCuratorshipUseCase
 import domain.profile.ProfileRepo
@@ -34,6 +35,10 @@ class CuratorshipFeatureImpl(
     private val projectRepo: ProjectRepo,
 ): CuratorshipFeature {
 
+    @ApiOperation(method = "GET", path = "/curatorship/getUnmarkedProjects", summary = "Get unmarked projects", tags = ["curatorship"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiResponse(code = 200, description = "Unmarked projects returned")
+    @ApiResponse(code = 423, description = "User is not a curator")
     override suspend fun getUnmarkedProjects(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -51,6 +56,10 @@ class CuratorshipFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/curatorship/getPendingProjects", summary = "Get pending projects", tags = ["curatorship"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiResponse(code = 200, description = "Pending projects returned")
+    @ApiResponse(code = 423, description = "User is not a curator")
     override suspend fun getPendingProjects(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -68,6 +77,11 @@ class CuratorshipFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/curatorship/retrySubmission", summary = "Retry project submission", tags = ["curatorship"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Submission retried")
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun retrySubmission(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -82,6 +96,12 @@ class CuratorshipFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/curatorship/approve", summary = "Approve project", tags = ["curatorship"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project approved")
+    @ApiResponse(code = 404, description = "Project not found")
+    @ApiResponse(code = 423, description = "User is not a curator")
     override suspend fun approveProject(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -100,6 +120,11 @@ class CuratorshipFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/curatorship/disapprove", summary = "Disapprove project", tags = ["curatorship"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiRequestBody(type = DisapproveProjectRequest::class, description = "Disapproval payload")
+    @ApiResponse(code = 200, description = "Project disapproved")
+    @ApiResponse(code = 423, description = "User is not a curator")
     override suspend fun disapproveProject(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()

@@ -30,8 +30,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -41,7 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import domain.project.AvailableCurator
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import ru.kaelesty.madprojects.features.auth.domain.StartGithubOauthUseCase
 import ru.kaelesty.madprojects.features.projectcreate.sdk.ProjectCreateNavItem
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
 import ru.kaelesty.madprojects.ui.cards.ProfileCard
@@ -51,6 +55,7 @@ import ru.kaelesty.madprojects.ui.headers.ScreenHeader
 import ru.kaelesty.madprojects.ui.strings.StringResources
 import ru.kaelesty.madprojects.ui.theme.Palette
 import ru.kaelesty.madprojects.ui.theme.Roboto
+import ru.kaelesty.madprojects.utils.KLogger
 
 @Composable
 fun CreateProjectScreen(
@@ -60,6 +65,8 @@ fun CreateProjectScreen(
     val state by vm.state.collectAsState()
     val curatorsState by vm.curatorsState.collectAsState()
     val groupsState by vm.groupsState.collectAsState()
+    val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
@@ -75,6 +82,19 @@ fun CreateProjectScreen(
             onDismiss = vm::closeRepoDialog,
             onInputChange = vm::setRepoInput,
             onConfirm = vm::confirmRepoInput,
+            onConnectGithub = {
+                scope.launch {
+                    when (val result = vm.buildGithubOauthStartUrl()) {
+                        is StartGithubOauthUseCase.Result.Success -> {
+                            runCatching { uriHandler.openUri(result.url) }
+                                .onFailure { KLogger.e("CreateProjectScreen", it) { "openUri failed (repo dialog)" } }
+                        }
+                        is StartGithubOauthUseCase.Result.Fail -> {
+                            KLogger.w("CreateProjectScreen") { "buildStartUrl failed (repo dialog): ${result.message}" }
+                        }
+                    }
+                }
+            },
         )
     }
 
@@ -346,6 +366,7 @@ private fun RepoLinkDialog(
     onDismiss: () -> Unit,
     onInputChange: (String) -> Unit,
     onConfirm: () -> Unit,
+    onConnectGithub: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -387,6 +408,21 @@ private fun RepoLinkDialog(
                         fontFamily = Roboto,
                         textAlign = TextAlign.Center
                     )
+                }
+                if (state.showGithubConnectAction) {
+                    TextButton(
+                        onClick = onConnectGithub,
+                        enabled = !state.isRepoValidating,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Palette.AccentBlue
+                        )
+                    ) {
+                        Text(
+                            text = StringResources.GithubAuthConnectButton,
+                            fontFamily = Roboto
+                        )
+                    }
                 }
                 if (state.isRepoValidating) {
                     Spacer(Modifier.height(8.dp))

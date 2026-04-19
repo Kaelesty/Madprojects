@@ -31,9 +31,9 @@ val profileModule = module {
     single { DeleteProjectGroupUseCase(get(), get()) }
     single { UpdateCommonProfileUseCase(get(), get()) }
     single { UpdateCuratorProfileUseCase(get(), get()) }
-    viewModel { CommonProfileViewModel(get(), get(), get(), get()) }
+    viewModel { CommonProfileViewModel(get(), get(), get(), get(), get()) }
     viewModel { (groupId: String) -> CuratorGroupViewModel(groupId, get()) }
-    viewModel { CuratorProfileViewModel(get(), get(), get(), get()) }
+    viewModel { CuratorProfileViewModel(get(), get(), get(), get(), get()) }
 
     single { ProfileNavItem(get()) } binds arrayOf(
         NavItem::class,

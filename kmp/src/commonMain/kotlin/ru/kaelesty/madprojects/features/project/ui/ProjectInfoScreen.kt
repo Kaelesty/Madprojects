@@ -38,6 +38,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,9 +56,11 @@ import domain.project.ProjectMember
 import domain.project.ProjectRepository
 import domain.project.ProjectStatus
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
+import ru.kaelesty.madprojects.features.auth.domain.StartGithubOauthUseCase
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
 import ru.kaelesty.madprojects.ui.cards.ProfileCard
 import ru.kaelesty.madprojects.ui.fields.AppDropdownField
@@ -83,6 +86,7 @@ fun ProjectInfoScreen(
     val userType by authContext.userType.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
     val canManageAsCurator = userType == UserType.Curator
     val markOptions = remember { listOf(1, 2, 3, 4, 5) }
     var inviteCopied by remember(inviteState.isOpen) { mutableStateOf(false) }
@@ -228,6 +232,27 @@ fun ProjectInfoScreen(
             repoState.errorMessage?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = Palette.AccentRed, fontFamily = Roboto, fontSize = 13.sp)
+            }
+            if (repoState.showGithubConnectAction) {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            when (val result = vm.buildGithubOauthStartUrl()) {
+                                is StartGithubOauthUseCase.Result.Success -> {
+                                    runCatching { uriHandler.openUri(result.url) }
+                                        .onFailure { KLogger.e(TAG, it) { "openUri failed (project repo dialog)" } }
+                                }
+                                is StartGithubOauthUseCase.Result.Fail -> {
+                                    KLogger.w(TAG) { "buildStartUrl failed (project repo dialog): ${result.message}" }
+                                }
+                            }
+                        }
+                    },
+                    enabled = !repoState.isValidating && !repoState.isSubmitting,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(StringResources.GithubAuthConnectButton, fontFamily = Roboto)
+                }
             }
             Spacer(Modifier.height(12.dp))
             if (repoState.isValidating || repoState.isSubmitting) {

@@ -1,5 +1,6 @@
 package app.features.database
 
+import app.openapi.annotations.*
 import domain.database.aRepo
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -27,6 +28,12 @@ class aFeatureImpl(
     private val validator: KeyValidator
 ) : aFeature {
 
+    @ApiOperation(method = "GET", path = "/db/a/getProjectUsers", summary = "Get project users", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "projectId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Project users returned")
+    @ApiResponse(code = 400, description = "Project id is missing")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getProjectUsers(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -44,6 +51,12 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/a/getGroupProjects", summary = "Get group projects", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "groupId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Group projects returned")
+    @ApiResponse(code = 400, description = "Group id is missing")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getGroupProjects(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -61,6 +74,15 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "POST", path = "/db/a/addProjectToGroup", summary = "Add project to group", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "projectId", type = Int::class, required = true)
+    @ApiQueryParam(name = "groupId", type = Int::class, required = true)
+    @ApiQueryParam(name = "curatorId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Project added to group")
+    @ApiResponse(code = 400, description = "Required parameters are missing")
+    @ApiResponse(code = 403, description = "Access key does not grant admin rights")
+    @ApiResponse(code = 500, description = "Project could not be added to group")
     override suspend fun addProjectToGroup(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role != KeyValidator.AdminRole.SUPER) {
@@ -82,6 +104,10 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/a/getAllProjectStatuses", summary = "Get all project statuses", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project statuses returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getAllProjectStatuses(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -96,6 +122,13 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "POST", path = "/db/a/approveProject", summary = "Approve project", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "projectId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Project approved")
+    @ApiResponse(code = 400, description = "Project id is missing")
+    @ApiResponse(code = 403, description = "Access key does not grant admin rights")
+    @ApiResponse(code = 500, description = "Project could not be approved")
     override suspend fun approveProject(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         val projectId = rc.call.parameters["projectId"]?.toIntOrNull()
@@ -117,6 +150,16 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "POST", path = "/db/a/createSprintKard", summary = "Create sprint kard", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "name", type = String::class, required = true)
+    @ApiQueryParam(name = "authorId", type = Int::class, required = true)
+    @ApiQueryParam(name = "desc", type = String::class, required = true)
+    @ApiQueryParam(name = "sprintId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Sprint kard created")
+    @ApiResponse(code = 400, description = "Required parameters are missing")
+    @ApiResponse(code = 403, description = "Access key does not grant admin rights")
+    @ApiResponse(code = 500, description = "Sprint kard could not be created")
     override suspend fun createSprintKard(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role != KeyValidator.AdminRole.SUPER) {
@@ -140,6 +183,15 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "POST", path = "/db/a/moveKard", summary = "Move kard", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "kardId", type = Int::class, required = true)
+    @ApiQueryParam(name = "columnId", type = Int::class, required = true)
+    @ApiQueryParam(name = "newOrder", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Kard moved")
+    @ApiResponse(code = 400, description = "Required parameters are missing")
+    @ApiResponse(code = 403, description = "Access key does not grant admin rights")
+    @ApiResponse(code = 500, description = "Kard could not be moved")
     override suspend fun moveKard(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role != KeyValidator.AdminRole.SUPER) {
@@ -161,6 +213,12 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/a/getGroupMarksCsv", summary = "Get group marks export", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "groupId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Group marks export returned", contentType = "text/plain")
+    @ApiResponse(code = 400, description = "Group id is missing")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getGroupMarksCsv(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -177,6 +235,13 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "POST", path = "/db/a/approveAllGroupProjects", summary = "Approve all group projects", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "groupId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "All group projects approved")
+    @ApiResponse(code = 400, description = "Group id is missing")
+    @ApiResponse(code = 403, description = "Access key does not grant admin rights")
+    @ApiResponse(code = 500, description = "Projects could not be approved")
     override suspend fun approveAllGroupProjects(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         val groupId = rc.call.parameters["groupId"]?.toIntOrNull()
@@ -198,6 +263,14 @@ class aFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "DELETE", path = "/db/a/removeUserFromProject", summary = "Remove user from project", tags = ["db-a"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "userId", type = Int::class, required = true)
+    @ApiQueryParam(name = "projectId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "User removed from project")
+    @ApiResponse(code = 400, description = "Required parameters are missing")
+    @ApiResponse(code = 403, description = "Access key does not grant admin rights")
+    @ApiResponse(code = 500, description = "User could not be removed from project")
     override suspend fun removeUserFromProject(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         val userId = rc.call.parameters["userId"]?.toIntOrNull()

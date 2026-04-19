@@ -1,0 +1,4 @@
+interface:
+  display_name: "Annotate OpenAPI Endpoint"
+  short_description: "Annotate backend endpoints for the custom OpenAPI framework"
+  default_prompt: "Use $annotate-openapi-endpoint to cover a backend API method with the custom OpenAPI annotations."

@@ -55,7 +55,7 @@ val projectModule = module {
     single { FinishSprintUseCase(get(), get()) }
     single { GetProjectKardsUseCase(get(), get()) }
     viewModel { (projectId: String) -> ProjectViewModel(projectId, get()) }
-    viewModel { (projectId: String) -> ProjectInfoViewModel(projectId, get()) }
+    viewModel { (projectId: String) -> ProjectInfoViewModel(projectId, get(), get()) }
     viewModel { (projectId: String) -> ProjectModerationViewModel(projectId, get()) }
     viewModel { (projectId: String) -> ProjectSocketViewModel(projectId, get()) }
     viewModel { (projectId: String) -> ProjectMessengerViewModel(projectId, get()) }

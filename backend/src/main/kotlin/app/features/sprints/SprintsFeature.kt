@@ -1,5 +1,6 @@
 package app.features.sprints
 
+import app.openapi.annotations.*
 import domain.KanbanRepository
 import domain.activity.ActivityRepo
 import domain.activity.ActivityType
@@ -40,6 +41,11 @@ class SprintsFeatureImpl(
     private val kanbanRepo: KanbanRepository
 ) : SprintsFeature {
 
+    @ApiOperation(method = "POST", path = "/sprint/update", summary = "Update sprint", tags = ["sprints"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiRequestBody(type = UpdateSprintRequest::class, description = "Updated sprint data")
+    @ApiResponse(code = 200, description = "Sprint updated")
+    @ApiResponse(code = 404, description = "Sprint not found or user has no access")
     override suspend fun updateSprint(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -58,6 +64,11 @@ class SprintsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/sprint/get", summary = "Get sprint", tags = ["sprints"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "sprintId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Sprint returned", type = SprintView::class)
+    @ApiResponse(code = 404, description = "Sprint not found or user has no access")
     override suspend fun getSprint(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -89,6 +100,11 @@ class SprintsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/sprint/finish", summary = "Finish sprint", tags = ["sprints"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "sprintId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Sprint finished")
+    @ApiResponse(code = 404, description = "Sprint not found or user has no access")
     override suspend fun finishSprint(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -119,6 +135,11 @@ class SprintsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/sprint/getListByProject", summary = "List project sprints", tags = ["sprints"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project sprints returned")
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun getProjectSprints(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -137,6 +158,11 @@ class SprintsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/sprint/create", summary = "Create sprint", tags = ["sprints"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiRequestBody(type = CreateSprintRequest::class, description = "Sprint creation payload")
+    @ApiResponse(code = 200, description = "Sprint created")
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun createSprint(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()

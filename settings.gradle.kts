@@ -22,4 +22,6 @@ include(
     ":kmp",
     ":backend",
     ":common",
+    ":backend-openapi-api",
+    ":backend-openapi-processor",
 )

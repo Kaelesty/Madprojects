@@ -92,7 +92,9 @@ val featuresModule = module {
     }
 
     single<SwaggerFeature>  {
-        SwaggerFeatureImpl()
+        SwaggerFeatureImpl(
+            config = get(),
+        )
     }
 
     single<EmailFeature> {

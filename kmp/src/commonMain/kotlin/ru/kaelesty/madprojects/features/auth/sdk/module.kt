@@ -12,6 +12,7 @@ import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.auth.domain.LoginUseCase
 import ru.kaelesty.madprojects.features.auth.domain.RefreshUseCase
 import ru.kaelesty.madprojects.features.auth.domain.RegisterUseCase
+import ru.kaelesty.madprojects.features.auth.domain.StartGithubOauthUseCase
 import ru.kaelesty.madprojects.features.auth.ui.LoginViewModel
 import ru.kaelesty.madprojects.features.auth.ui.RegisterViewModel
 import ru.kaelesty.madprojects.navigation.NavItem
@@ -50,6 +51,10 @@ val authModule = module {
 
     single {
         RefreshUseCase(get())
+    }
+
+    single {
+        StartGithubOauthUseCase(get())
     }
 
     viewModel {
