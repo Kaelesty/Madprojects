@@ -1,0 +1,4 @@
+## Android Studio recreates local.properties automatically.
+# Keep machine-specific SDK paths out of version control.
+# Example:
+# sdk.dir=/Users/<your-user>/Library/Android/sdk

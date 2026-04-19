@@ -3,6 +3,7 @@ package ru.kaelesty.madprojects.features.profile.sdk
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.profile.ui.CuratorGroupScreen
@@ -49,7 +50,7 @@ class ProfileNavItem(
             ProfileScreen(authContext, navigator)
         }
         composable<Route.CuratorGroup> { backStackEntry ->
-            val groupId = backStackEntry.arguments?.getString("groupId") ?: return@composable
+            val groupId = backStackEntry.toRoute<Route.CuratorGroup>().groupId
             CuratorGroupScreen(
                 groupId = groupId,
                 onBack = navigator::back,

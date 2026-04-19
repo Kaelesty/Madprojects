@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.compose)
@@ -19,9 +21,18 @@ kotlin {
         }
     }
 
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    val iosFramework = XCFramework("MadprojectsShared")
+    val iosX64 = iosX64()
+    val iosArm64 = iosArm64()
+    val iosSimulatorArm64 = iosSimulatorArm64()
+
+    listOf(iosX64, iosArm64, iosSimulatorArm64).forEach { target ->
+        target.binaries.framework {
+            baseName = "MadprojectsShared"
+            isStatic = true
+            iosFramework.add(this)
+        }
+    }
 
     jvmToolchain(17)
 
@@ -64,7 +75,6 @@ kotlin {
             }
         }
 
-        // Define a shared iOS source set for the legacy hierarchy.
         val iosMain by creating {
             dependsOn(commonMain)
             dependencies {

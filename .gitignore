@@ -9,6 +9,10 @@
 .vscode/
 out/
 react/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
 
 # OS
 .DS_Store
@@ -19,7 +23,7 @@ Thumbs.db
 *.env
 
 # Sensitive config files
-gradle.properties
+local.properties
 backend/src/main/resources/config.json
 backend/src/main/resources/application.conf
 src/*

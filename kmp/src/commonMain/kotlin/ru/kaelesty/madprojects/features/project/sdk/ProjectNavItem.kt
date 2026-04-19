@@ -3,6 +3,7 @@ package ru.kaelesty.madprojects.features.project.sdk
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.project.ui.ProjectScreen
@@ -26,10 +27,7 @@ class ProjectNavItem(
     override fun applyOn(builder: NavGraphBuilder, navController: NavController) = with(builder) {
         val navigator = Navigator(navController)
         composable<Route.Project> { backStackEntry ->
-            val projectId = backStackEntry.arguments?.getString("projectId")
-            if (projectId == null) {
-                return@composable
-            }
+            val projectId = backStackEntry.toRoute<Route.Project>().projectId
             ProjectScreen(
                 authContext = authContext,
                 projectId = projectId,
