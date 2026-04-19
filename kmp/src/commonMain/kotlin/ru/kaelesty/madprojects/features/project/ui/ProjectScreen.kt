@@ -62,11 +62,11 @@ import org.jetbrains.compose.resources.painterResource
 import ru.kaelesty.madprojects.features.auth.domain.AuthContext
 import ru.kaelesty.madprojects.features.project.sdk.ProjectNavItem
 import ru.kaelesty.madprojects.kmp.generated.resources.Res
-import ru.kaelesty.madprojects.kmp.generated.resources.activity
-import ru.kaelesty.madprojects.kmp.generated.resources.github
-import ru.kaelesty.madprojects.kmp.generated.resources.info
-import ru.kaelesty.madprojects.kmp.generated.resources.kanban
-import ru.kaelesty.madprojects.kmp.generated.resources.message
+import ru.kaelesty.madprojects.kmp.generated.resources.activity as activityIcon
+import ru.kaelesty.madprojects.kmp.generated.resources.github as githubIcon
+import ru.kaelesty.madprojects.kmp.generated.resources.info as infoIcon
+import ru.kaelesty.madprojects.kmp.generated.resources.kanban as kanbanIcon
+import ru.kaelesty.madprojects.kmp.generated.resources.message as messageIcon
 import ru.kaelesty.madprojects.ui.buttons.PrimaryActionButton
 import ru.kaelesty.madprojects.ui.fields.AppTextField
 import ru.kaelesty.madprojects.ui.headers.ScreenHeader
@@ -151,7 +151,7 @@ fun ProjectScreen(
                             selectedTab = ProjectTab.Sprints
                         },
                         icon = {
-                            ProjectNavIcon(painter = painterResource(Res.drawable.activity))
+                            ProjectNavIcon(painter = painterResource(Res.drawable.activityIcon))
                         },
                         colors = navigationItemColors()
                     )
@@ -164,7 +164,7 @@ fun ProjectScreen(
                             selectedTab = ProjectTab.Messenger
                         },
                         icon = {
-                            ProjectNavIcon(painter = painterResource(Res.drawable.message))
+                            ProjectNavIcon(painter = painterResource(Res.drawable.messageIcon))
                         },
                         colors = navigationItemColors()
                     )
@@ -177,7 +177,7 @@ fun ProjectScreen(
                             selectedTab = ProjectTab.Kanban
                         },
                         icon = {
-                            ProjectNavIcon(painter = painterResource(Res.drawable.kanban))
+                            ProjectNavIcon(painter = painterResource(Res.drawable.kanbanIcon))
                         },
                         colors = navigationItemColors()
                     )
@@ -190,7 +190,7 @@ fun ProjectScreen(
                             selectedTab = ProjectTab.Github
                         },
                         icon = {
-                            ProjectNavIcon(painter = painterResource(Res.drawable.github))
+                            ProjectNavIcon(painter = painterResource(Res.drawable.githubIcon))
                         },
                         colors = navigationItemColors()
                     )
@@ -203,7 +203,7 @@ fun ProjectScreen(
                             selectedTab = ProjectTab.Info
                         },
                         icon = {
-                            ProjectNavIcon(painter = painterResource(Res.drawable.info))
+                            ProjectNavIcon(painter = painterResource(Res.drawable.infoIcon))
                         },
                         colors = navigationItemColors()
                     )
