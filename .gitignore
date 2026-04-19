@@ -42,3 +42,28 @@ backend/src/main/resources/*.der
 node_modules/
 **/.parcel-cache/
 
+# react
+# dependencies
+react-web/MadProjects-web/node_modules
+react-web/MadProjects-web/.pnp
+react-web/MadProjects-web.pnp.js
+
+
+# testing
+react-web/MadProjects-web/coverage
+
+# production
+react-web/MadProjects-web/build
+react-web/MadProjects-web/nginx.conf
+react-web/MadProjects-web/nginx.conf.template
+
+# misc
+react-web/MadProjects-web/.DS_Store
+react-web/MadProjects-web/.env.local
+react-web/MadProjects-web/.env.development.local
+react-web/MadProjects-web/.env.test.local
+react-web/MadProjects-web/.env.production.local
+
+react-web/MadProjects-web/npm-debug.log*
+react-web/MadProjects-web/yarn-debug.log*
+react-web/MadProjects-web/yarn-error.log*
