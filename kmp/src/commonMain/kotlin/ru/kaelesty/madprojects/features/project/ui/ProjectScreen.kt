@@ -185,7 +185,7 @@ fun ProjectScreen(
                         selected = selectedTab == ProjectTab.Github,
                         onClick = {
                             if (selectedTab != ProjectTab.Github) {
-                                KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> Github" }
+                                KLogger.d(TAG) { "tab switch: ${selectedTab.name} -> github" }
                             }
                             selectedTab = ProjectTab.Github
                         },
