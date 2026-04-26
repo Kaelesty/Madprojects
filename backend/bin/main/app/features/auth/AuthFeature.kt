@@ -1,6 +1,7 @@
 package app.features.auth
 
 import app.config.Config
+import app.openapi.annotations.*
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
@@ -49,6 +50,10 @@ class AuthFeatureImpl(
     private val accessTokenLifetime = 1000L * 30 * 60
     private val refreshTokenLifetime = 1000L * 60 * 60 * 24 * 180
 
+    @ApiOperation(method = "POST", path = "/auth/refresh", summary = "Refresh JWT tokens", tags = ["auth"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiResponse(code = 200, description = "Tokens refreshed", type = AuthorizedResponse::class)
+    @ApiResponse(code = 404, description = "Refresh request not found")
     override suspend fun refresh(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -109,6 +114,12 @@ class AuthFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/auth/register", summary = "Register user", tags = ["auth"])
+    @ApiRequestBody(type = RegisterRequest::class, description = "User registration data")
+    @ApiResponse(code = 200, description = "User registered", type = AuthorizedResponse::class)
+    @ApiResponse(code = 403, description = "Password does not meet requirements")
+    @ApiResponse(code = 406, description = "Username is already taken")
+    @ApiResponse(code = 409, description = "Email is already registered")
     override suspend fun register(rc: RoutingContext) {
         with(rc) {
             val request = call.receive<RegisterRequest>()
@@ -168,6 +179,10 @@ class AuthFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/auth/login", summary = "Authenticate user", tags = ["auth"])
+    @ApiRequestBody(type = LoginRequest::class, description = "User credentials")
+    @ApiResponse(code = 200, description = "Authenticated", type = AuthorizedResponse::class)
+    @ApiResponse(code = 403, description = "Invalid credentials")
     override suspend fun login(rc: RoutingContext) {
         with(rc) {
             val user = call.receive<LoginRequest>()

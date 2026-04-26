@@ -1,6 +1,7 @@
 package app.features
 
 import app.LogManager
+import app.openapi.annotations.*
 import domain.InvitesRepo
 import domain.activity.ActivityRepo
 import domain.activity.ActivityType
@@ -34,6 +35,11 @@ class InvitesFeatureImpl(
     private val activityRepo: ActivityRepo,
 ): InvitesFeature {
 
+    @ApiOperation(method = "GET", path = "/invites/get", summary = "Get project invite", tags = ["invites"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project invite loaded", type = ProjectInviteResponse::class)
+    @ApiResponse(code = 404, description = "Project not found or user is not a member")
     override suspend fun getProjectInvite(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -55,6 +61,11 @@ class InvitesFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/invites/refresh", summary = "Refresh project invite", tags = ["invites"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project invite refreshed", type = ProjectInviteResponse::class)
+    @ApiResponse(code = 404, description = "Project not found or user is not a member")
     override suspend fun refreshProjectInvite(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -75,6 +86,11 @@ class InvitesFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "POST", path = "/invites/use", summary = "Use project invite", tags = ["invites"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "invite", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Invite applied", type = UseInviteResponse::class)
+    @ApiResponse(code = 404, description = "Invite not found")
     override suspend fun useInvite(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()

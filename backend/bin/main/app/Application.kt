@@ -4,6 +4,7 @@ import app.features.EmailFeature
 import app.features.InvitesFeature
 import app.features.KardsFeature
 import app.features.MarksFeature
+import app.features.SwaggerFeature
 import app.features.WsFeature
 import app.features.activity.ActivityFeature
 import app.features.auth.AuthFeature
@@ -12,6 +13,7 @@ import app.features.database.aFeature
 import app.features.database.iFeature
 import app.features.database.lFeature
 import app.features.github.GithubFeature
+import app.openapi.annotations.*
 import app.features.profile.ProfileFeature
 import app.features.project.ProjectsFeature
 import app.features.projectgroups.ProjectGroupsFeature
@@ -49,6 +51,7 @@ class Application : KoinComponent {
     private val githubFeature by inject<GithubFeature>()
     private val wsFeature by inject<WsFeature>()
     private val authFeature by inject<AuthFeature>()
+    private val swaggerFeature by inject<SwaggerFeature>()
     private val profileFeature by inject<ProfileFeature>()
     private val projectsFeature by inject<ProjectsFeature>()
     private val sprintsFeature by inject<SprintsFeature>()
@@ -143,13 +146,11 @@ class Application : KoinComponent {
             routing {
 
                 get("/checkin") {
-                    call.respond(HttpStatusCode.OK)
+                    checkin(this)
                 }
 
                 get("/inst") {
-                    call.respondFile(
-                        File("src/main/resources/Inst.pdf")
-                    )
+                    inst(this)
                 }
 
                 post("/auth/login") {
@@ -169,10 +170,7 @@ class Application : KoinComponent {
                     setupAll(pluginContainer)
 
                     get("/hello") {
-                        val principal = call.principal<JWTPrincipal>()
-                        val username = principal!!.payload.getClaim("username").asString()
-                        val expiresAt = principal.expiresAt?.time?.minus(System.currentTimeMillis())
-                        call.respondText("Hello, $username! Token is expired at $expiresAt ms.")
+                        hello(this)
                     }
 
                     post("/auth/refresh") {
@@ -275,7 +273,7 @@ class Application : KoinComponent {
                         projectGroupsFeature.getCuratorProjects(this)
                     }
 
-                    post("projectGroup/delete") {
+                    post("/projectGroup/delete") {
                         projectGroupsFeature.deleteProjectGroup(this)
                     }
 
@@ -335,16 +333,24 @@ class Application : KoinComponent {
                         invitesFeature.refreshProjectInvite(this)
                     }
 
-                    get("project/activity/get") {
+                    get("/project/activity/get") {
                         activityFeature.getActivity(this)
                     }
 
-                    post("project/createKardChat") {
+                    post("/project/createKardChat") {
                         projectsFeature.createKardChat(this)
                     }
                 }
 
-                //swaggerFeature.install(this)
+                swaggerFeature.install(this)
+
+                get("/oauth/github/start") {
+                    githubFeature.startGithubOAuth(this)
+                }
+
+                get("/oauth/github/callback") {
+                    githubFeature.proceedGithubOAuthCallback(this)
+                }
 
                 get("/github/githubCallbackUrl") {
                     githubFeature.proceedGithubApiCallback(this)
@@ -404,8 +410,7 @@ class Application : KoinComponent {
 
                     // 4.10. Найти чаты, в которых больше всего сообщений
                     get("/getMostActiveChats") {
-                        val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 10
-                        iFeature.getMostActiveChats(this, limit)
+                        iFeature.getMostActiveChats(this)
                     }
                 }
 
@@ -514,5 +519,29 @@ class Application : KoinComponent {
                 }
             }
         }
+    }
+
+    @ApiOperation(method = "GET", path = "/checkin", summary = "Health check", tags = ["system"])
+    @ApiResponse(code = 200, description = "Backend is reachable")
+    private suspend fun checkin(rc: RoutingContext) {
+        rc.call.respond(HttpStatusCode.OK)
+    }
+
+    @ApiOperation(method = "GET", path = "/inst", summary = "Download installation instructions", tags = ["system"])
+    @ApiResponse(code = 200, description = "Installation instructions PDF", contentType = "application/pdf")
+    private suspend fun inst(rc: RoutingContext) {
+        rc.call.respondFile(
+            File("src/main/resources/Inst.pdf")
+        )
+    }
+
+    @ApiOperation(method = "GET", path = "/hello", summary = "Inspect current JWT", tags = ["system"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiResponse(code = 200, description = "JWT debug output", contentType = "text/plain")
+    private suspend fun hello(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
+        val username = principal!!.payload.getClaim("username").asString()
+        val expiresAt = principal.expiresAt?.time?.minus(System.currentTimeMillis())
+        rc.call.respondText("Hello, $username! Token is expired at $expiresAt ms.")
     }
 }

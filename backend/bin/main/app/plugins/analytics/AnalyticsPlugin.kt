@@ -1,6 +1,7 @@
 package app.plugins.analytics
 
 import app.GithubTokenUtil
+import app.openapi.annotations.*
 import app.plugins.Plugin
 import domain.BranchesRepo
 import domain.project.ProjectRepo
@@ -15,6 +16,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.get
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -43,47 +45,89 @@ class AnalyticsPlugin(
     }
 
     private fun Route.getGroups() = get("/analytics/getGroups") {
-        val principal = call.principal<JWTPrincipal>()
+        getGroupsHandler(this)
+    }
+
+    private fun Route.getGroupMarks() = get("/analytics/groupMarks") {
+        getGroupMarksHandler(this)
+    }
+
+    private fun Route.getProjectStatusesInProjectGroupByProject() = get("/analytics/projectStatusesByProjectId") {
+        getProjectStatusesInProjectGroupByProjectHandler(this)
+    }
+
+    private fun Route.getProjectGroupCommits() = get("/analytics/projectGroupCommits") {
+        getProjectGroupCommitsHandler(this)
+    }
+
+    private fun Route.getUserCommits() = get("/analytics/userCommits") {
+        getUserCommitsHandler(this)
+    }
+
+    private fun Route.getProjectGroupMarks() = get("/analytics/projectGroupMarks") {
+        getProjectGroupMarksHandler(this)
+    }
+
+    private fun Route.getProjectCommitsCount() = get("/analytics/projectCommitsCount") {
+        getProjectCommitsCountHandler(this)
+    }
+
+    private fun Route.getProjectStatusesInProjectGroup() = get("/analytics/projectStatuses") {
+        getProjectStatusesInProjectGroupHandler(this)
+    }
+
+    @ApiOperation(method = "GET", path = "/analytics/getGroups", summary = "Get member groups for project group", tags = ["analytics"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectGroupId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Member groups returned")
+    @ApiResponse(code = 404, description = "Project group not found or user has no access")
+    private suspend fun getGroupsHandler(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
-        val projectGroupId = call.parameters["projectGroupId"]
+        val projectGroupId = rc.call.parameters["projectGroupId"]
 
         if (projectGroupId == null ||
             !projectGroupsRepo.checkIsCuratorGroupOwner(userId, projectGroupId)
         ) {
-            call.respond(HttpStatusCode.Companion.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.NotFound)
+            return
         }
 
         val groups = projectGroupsRepo.getGroupProjects(projectGroupId)
             .flatMap { projectInGroup ->
-                projectRepo.getProject(projectInGroup.id, userId).let { project ->
+                projectRepo.getProject(projectInGroup.id, userId).let { _ ->
                     projectInGroup.members.map {
                         it.group
                     }
                 }
             }
             .distinct()
-        call.respondText(
+        rc.call.respondText(
             text = Json.Default.encodeToString(mapOf("groups" to groups)),
             contentType = ContentType.Application.Json,
             status = HttpStatusCode.Companion.OK
         )
     }
 
-    private fun Route.getGroupMarks() = get("/analytics/groupMarks") {
-        val principal = call.principal<JWTPrincipal>()
+    @ApiOperation(method = "GET", path = "/analytics/groupMarks", summary = "Download group marks workbook", tags = ["analytics"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectGroupId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Group marks workbook", contentType = "application/octet-stream")
+    @ApiResponse(code = 404, description = "Project group not found or user has no access")
+    private suspend fun getGroupMarksHandler(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
-        val projectGroupId = call.parameters["projectGroupId"]
+        val projectGroupId = rc.call.parameters["projectGroupId"]
 
         if (projectGroupId == null ||
             !projectGroupsRepo.checkIsCuratorGroupOwner(userId, projectGroupId)
         ) {
-            call.respond(HttpStatusCode.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.NotFound)
+            return
         }
 
         val groupName = projectGroupsRepo.getGroupTitle(projectGroupId)
-        call.response.header(
+        rc.call.response.header(
             "Content-Disposition",
             "attachment; filename=\"${groupName}.xlsx\""
         )
@@ -117,56 +161,65 @@ class AnalyticsPlugin(
                 )
             }
 
-        call.respondBytes(
+        rc.call.respondBytes(
             bytes = excelWizard.excelify(data),
             contentType = ContentType.Application.OctetStream,
             status = HttpStatusCode.OK,
         )
     }
 
-    private fun Route.getProjectStatusesInProjectGroupByProject() = get("/analytics/projectStatusesByProjectId") {
-        val principal = call.principal<JWTPrincipal>()
+    @ApiOperation(method = "GET", path = "/analytics/projectStatusesByProjectId", summary = "Get project statuses by project id", tags = ["analytics"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project statuses returned")
+    @ApiResponse(code = 404, description = "Project group not found or user has no access")
+    private suspend fun getProjectStatusesInProjectGroupByProjectHandler(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
-        val projectId = call.parameters["projectId"]
+        val projectId = rc.call.parameters["projectId"]
 
         if (projectId == null) {
-            call.respond(HttpStatusCode.Companion.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.NotFound)
+            return
         }
 
         val groupId = projectGroupsRepo.getGroupId(projectId)
 
         if (!projectGroupsRepo.checkIsCuratorGroupOwner(userId, groupId)) {
-            call.respond(HttpStatusCode.Companion.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.NotFound)
+            return
         }
 
         val projectIds = projectGroupsRepo.getGroupProjects(groupId).map { it.id }
-        val projectStatuses = projectIds.map {
-            projectRepo.getProject(it, userId) to projectRepo.getProjectStatus(it)
-        }
-        val response = projectStatuses.map {
+        val response = projectIds.map {
+            val project = projectRepo.getProject(it, userId)
+            val status = projectRepo.getProjectStatus(it)
             ProjectWithStatus(
-                id = it.first.id,
-                title = it.first.meta.title,
-                status = it.second.name,
+                id = project.id,
+                title = project.meta.title,
+                status = status.name,
             )
         }
-        call.respondText(
+        rc.call.respondText(
             text = Json.Default.encodeToString(response),
             status = HttpStatusCode.Companion.OK,
             contentType = ContentType.Application.Json,
         )
     }
 
-    private fun Route.getProjectGroupCommits() = get("/analytics/projectGroupCommits") {
-        val principal = call.principal<JWTPrincipal>()
+    @ApiOperation(method = "GET", path = "/analytics/projectGroupCommits", summary = "Get project group commit counters", tags = ["analytics"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "groupId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project group commit counters returned")
+    @ApiResponse(code = 404, description = "Project group not found or user has no access")
+    private suspend fun getProjectGroupCommitsHandler(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
-        val groupId = call.parameters["groupId"]
+        val groupId = rc.call.parameters["groupId"]
 
         if (groupId == null || !projectGroupsRepo.checkIsCuratorGroupOwner(userId, groupId)) {
-            call.respond(HttpStatusCode.Companion.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.NotFound)
+            return
         }
 
         val response = projectGroupsRepo.getGroupProjectsAnalytics(groupId)
@@ -178,44 +231,54 @@ class AnalyticsPlugin(
                 )
             }
 
-        call.respondText(
+        rc.call.respondText(
             text = Json.Default.encodeToString(response),
             status = HttpStatusCode.Companion.OK,
             contentType = ContentType.Application.Json,
         )
     }
 
-    private fun Route.getUserCommits() = get("/analytics/userCommits") {
-        val principal = call.principal<JWTPrincipal>()
+    @ApiOperation(method = "GET", path = "/analytics/userCommits", summary = "Get user commits by project", tags = ["analytics"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "User commits returned")
+    @ApiResponse(code = 404, description = "Project not found")
+    @ApiResponse(code = 425, description = "GitHub token is not available")
+    private suspend fun getUserCommitsHandler(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
 
-        val projectId = call.parameters["projectId"]
+        val projectId = rc.call.parameters["projectId"]
         if (projectId == null) {
-            call.respond(HttpStatusCode.Companion.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.NotFound)
+            return
         }
 
         val githubToken = tokenUtil.getGithubAccessToken(userId)
         if (githubToken == null) {
-            call.respond(HttpStatusCode.Companion.TooEarly)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.TooEarly)
+            return
         }
         val commiters = branchesRepo.getCommitsCount(projectId, githubToken)
-        call.respondText(
+        rc.call.respondText(
             text = Json.encodeToString(commiters),
             status = HttpStatusCode.Companion.OK,
             contentType = ContentType.Application.Json,
         )
     }
 
-    private fun Route.getProjectGroupMarks() = get("/analytics/projectGroupMarks") {
-        val principal = call.principal<JWTPrincipal>()
+    @ApiOperation(method = "GET", path = "/analytics/projectGroupMarks", summary = "Get project group marks", tags = ["analytics"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "groupId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project group marks returned")
+    private suspend fun getProjectGroupMarksHandler(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
-        val groupId = call.parameters["groupId"]
+        val groupId = rc.call.parameters["groupId"]
 
         if (groupId == null || !projectGroupsRepo.checkIsCuratorGroupOwner(userId, groupId)) {
-            call.respond(HttpStatusCode.Companion.OK)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.OK)
+            return
         }
 
         val response = projectGroupsRepo.getGroupProjectsAnalytics(groupId)
@@ -227,54 +290,65 @@ class AnalyticsPlugin(
                 )
             }
 
-        call.respondText(
+        rc.call.respondText(
             text = Json.Default.encodeToString(response),
             status = HttpStatusCode.Companion.OK,
             contentType = ContentType.Application.Json,
         )
     }
 
-    private fun Route.getProjectCommitsCount() = get("/analytics/projectCommitsCount") {
-        val principal = call.principal<JWTPrincipal>()
+    @ApiOperation(method = "GET", path = "/analytics/projectCommitsCount", summary = "Get total project commits count", tags = ["analytics"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project commits count returned")
+    @ApiResponse(code = 404, description = "Project or group not found, or user has no access")
+    @ApiResponse(code = 425, description = "GitHub token is not available")
+    private suspend fun getProjectCommitsCountHandler(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
-        val projectId = call.parameters["projectId"]
+        val projectId = rc.call.parameters["projectId"]
 
         if (projectId == null) {
-            call.respond(HttpStatusCode.Companion.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.NotFound)
+            return
         }
 
         val groupId = runCatching { projectGroupsRepo.getGroupId(projectId) }.getOrNull()
         if (groupId == null || !projectGroupsRepo.checkIsCuratorGroupOwner(userId, groupId)) {
-            call.respond(HttpStatusCode.Companion.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.NotFound)
+            return
         }
 
         val githubToken = tokenUtil.getGithubAccessToken(userId)
         if (githubToken == null) {
-            call.respond(HttpStatusCode.Companion.TooEarly)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.TooEarly)
+            return
         }
 
         val response = mapOf(
             "count" to branchesRepo.getCommitsCount(projectId, githubToken).sumOf { it.commitsCount }
         )
 
-        call.respondText(
+        rc.call.respondText(
             text = Json.Default.encodeToString(response),
             status = HttpStatusCode.Companion.OK,
             contentType = ContentType.Application.Json,
         )
     }
 
-    private fun Route.getProjectStatusesInProjectGroup() = get("/analytics/projectStatuses") {
-        val principal = call.principal<JWTPrincipal>()
+    @ApiOperation(method = "GET", path = "/analytics/projectStatuses", summary = "Get project statuses in group", tags = ["analytics"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "groupId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project statuses returned")
+    @ApiResponse(code = 404, description = "Project group not found or user has no access")
+    private suspend fun getProjectStatusesInProjectGroupHandler(rc: RoutingContext) {
+        val principal = rc.call.principal<JWTPrincipal>()
         val userId = principal!!.payload.getClaim("userId").asString()
-        val groupId = call.parameters["groupId"]
+        val groupId = rc.call.parameters["groupId"]
 
         if (groupId == null || !projectGroupsRepo.checkIsCuratorGroupOwner(userId, groupId)) {
-            call.respond(HttpStatusCode.Companion.NotFound)
-            return@get
+            rc.call.respond(HttpStatusCode.Companion.NotFound)
+            return
         }
         val projectStatuses = projectGroupsRepo.getGroupProjectsAnalytics(groupId).map {
             ProjectTitleToId(
@@ -283,7 +357,7 @@ class AnalyticsPlugin(
             )
         }
 
-        call.respondText(
+        rc.call.respondText(
             text = Json.Default.encodeToString(projectStatuses),
             status = HttpStatusCode.Companion.OK,
             contentType = ContentType.Application.Json,

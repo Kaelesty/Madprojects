@@ -1,5 +1,6 @@
 package app.features.database
 
+import app.openapi.annotations.*
 import domain.database.lRepo
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -29,6 +30,10 @@ class lFeatureImpl(
     private val validator: KeyValidator
 ) : lFeature {
 
+    @ApiOperation(method = "GET", path = "/db/l/getStudentsWithoutProjects", summary = "Get students without projects", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Students without projects returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getStudentsWithoutProjects(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -43,6 +48,10 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/l/getProjectsWithoutCompletedSprints", summary = "Get projects without completed sprints", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Projects without completed sprints returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getProjectsWithoutCompletedSprints(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -57,6 +66,10 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/l/getAllUsers", summary = "Get all users", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "All users returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getAllUsers(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -71,6 +84,10 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/l/getUnapprovedProjects", summary = "Get unapproved projects", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Unapproved projects returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getUnapprovedProjects(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -85,6 +102,10 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/l/getProjectsWithoutRepo", summary = "Get projects without repositories", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Projects without repositories returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getProjectsWithoutRepo(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -99,6 +120,10 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/l/getLowRatingGroups", summary = "Get low-rating groups", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Low-rating groups returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getLowRatingGroups(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -113,6 +138,10 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/l/getOverdueSprints", summary = "Get overdue sprints", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Overdue sprints returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getOverdueSprints(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -127,6 +156,10 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "GET", path = "/db/l/getUsersWithoutGitHub", summary = "Get users without GitHub connection", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Users without GitHub connection returned")
+    @ApiResponse(code = 401, description = "Access key is invalid")
     override suspend fun getUsersWithoutGitHub(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         if (role == null) {
@@ -141,6 +174,13 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "POST", path = "/db/l/approveProject", summary = "Approve project", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "projectId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Project approved")
+    @ApiResponse(code = 400, description = "Project id is missing")
+    @ApiResponse(code = 403, description = "Access key does not grant admin rights")
+    @ApiResponse(code = 500, description = "Project could not be approved")
     override suspend fun approveProject(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         val projectId = rc.call.parameters["projectId"]?.toIntOrNull()
@@ -163,6 +203,13 @@ class lFeatureImpl(
         )
     }
 
+    @ApiOperation(method = "DELETE", path = "/db/l/deleteProject", summary = "Delete project", tags = ["db-l"])
+    @ApiQueryParam(name = "key", type = String::class, required = true)
+    @ApiQueryParam(name = "projectId", type = Int::class, required = true)
+    @ApiResponse(code = 200, description = "Project deleted")
+    @ApiResponse(code = 400, description = "Project id is missing")
+    @ApiResponse(code = 403, description = "Access key does not grant admin rights")
+    @ApiResponse(code = 500, description = "Project could not be deleted")
     override suspend fun deleteProject(rc: RoutingContext) {
         val role = rc.call.parameters["key"]?.let { validator.validate(it) }
         val projectId = rc.call.parameters["projectId"]?.toIntOrNull()

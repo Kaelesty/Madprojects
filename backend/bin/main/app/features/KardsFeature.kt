@@ -1,5 +1,6 @@
 package app.features
 
+import app.openapi.annotations.*
 import domain.KanbanRepository
 import domain.project.ProjectRepo
 import domain.sprints.SprintsRepo
@@ -27,6 +28,11 @@ class KardsFeatureImpl(
     private val sprintsRepo: SprintsRepo,
 ): KardsFeature {
 
+    @ApiOperation(method = "GET", path = "/sprint/kanban/get", summary = "Get sprint kanban", tags = ["kanban"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "sprintId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Sprint kanban returned")
+    @ApiResponse(code = 404, description = "Sprint not found or user has no access")
     override suspend fun getSprintKanban(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
@@ -56,6 +62,11 @@ class KardsFeatureImpl(
         }
     }
 
+    @ApiOperation(method = "GET", path = "/project/kards", summary = "Get project kards", tags = ["kanban"])
+    @ApiSecurity(name = "auth-jwt")
+    @ApiQueryParam(name = "projectId", type = String::class, required = true)
+    @ApiResponse(code = 200, description = "Project kards returned")
+    @ApiResponse(code = 404, description = "Project not found or user has no access")
     override suspend fun getProjectKards(rc: RoutingContext) {
         with(rc) {
             val principal = call.principal<JWTPrincipal>()
