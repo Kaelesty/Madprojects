@@ -10,9 +10,10 @@ import kotlinx.coroutines.launch
 
 object ProjectBackFlowManager {
 
+    private val lock = Any()
     private val projectBackFlows: MutableMap<Int, ProjectBackFlow> = mutableMapOf()
 
-    fun getProjectBackFlow(projectId: Int): ProjectBackFlow.BackFlow {
+    fun getProjectBackFlow(projectId: Int): ProjectBackFlow.BackFlow = synchronized(lock) {
         val backflow = projectBackFlows[projectId]
         if (backflow == null) {
             return ProjectBackFlow.BackFlow(
@@ -29,7 +30,7 @@ object ProjectBackFlowManager {
         }
     }
 
-    fun unsubscribe(projectId: Int) {
+    fun unsubscribe(projectId: Int) = synchronized(lock) {
         val backflow = projectBackFlows[projectId]
         backflow?.let {
             backflow.subscribesCount -= 1
